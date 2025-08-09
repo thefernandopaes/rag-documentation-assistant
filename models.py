@@ -21,6 +21,7 @@ class DocumentChunk(db.Model):
     doc_type = db.Column(db.String(50))  # 'react', 'python', 'fastapi'
     version = db.Column(db.String(20))
     embedding_id = db.Column(db.String(100))  # ChromaDB document ID
+    content_hash = db.Column(db.String(64))   # Idempotency key (SHA-256)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

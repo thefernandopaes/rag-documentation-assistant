@@ -1,11 +1,11 @@
 import logging
 import time
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 import requests
 from bs4 import BeautifulSoup
 import trafilatura
-from urllib.parse import urljoin, urlparse, quote
+from urllib.parse import urljoin, urlparse
 from config import Config
 from data.sample_docs import SAMPLE_REACT_DOCS, SAMPLE_PYTHON_DOCS, SAMPLE_FASTAPI_DOCS
 
@@ -15,10 +15,9 @@ class DocumentProcessor:
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'DocRag Documentation Scraper 1.0 (Educational Purpose)'
+            'User-Agent': 'DocRag Documentation Crawler/1.0 (+https://example.com)'
         })
-        # Set timeout for requests
-        self.session.timeout = 30
+        self.timeout = Config.DOC_CRAWL_TIMEOUT
     
     def process_documentation_sources(self) -> List[Dict[str, Any]]:
         """Process all configured documentation sources"""
@@ -37,16 +36,125 @@ class DocumentProcessor:
     
     def process_source(self, source_config: Dict[str, str]) -> List[Dict[str, Any]]:
         """Process a single documentation source"""
-        documents = []
-        
-        if source_config['type'] == 'react':
-            documents = self._process_react_docs(source_config)
-        elif source_config['type'] == 'python':
-            documents = self._process_python_docs(source_config)
-        elif source_config['type'] == 'fastapi':
-            documents = self._process_fastapi_docs(source_config)
-        
-        return documents
+        if Config.DOC_USE_SAMPLE:
+            # Maintain current behavior for samples
+            if source_config['type'] == 'react':
+                return self._process_react_docs(source_config)
+            if source_config['type'] == 'python':
+                return self._process_python_docs(source_config)
+            if source_config['type'] == 'fastapi':
+                return self._process_fastapi_docs(source_config)
+            return []
+
+        # Real crawling path
+        return self._crawl_and_extract(source_config)
+
+    # ------------------ Real crawling helpers ------------------
+    def _crawl_and_extract(self, config: Dict[str, str]) -> List[Dict[str, Any]]:
+        """Crawl starting from docs_url within base_url scope and extract cleaned text."""
+        base_url = config['base_url']
+        start_url = config['docs_url']
+        doc_type = config['type']
+
+        logger.info(f"Crawling {doc_type} docs: {start_url}")
+
+        to_visit: List[str] = [start_url]
+        visited: Set[str] = set()
+        results: List[Dict[str, Any]] = []
+        max_pages = Config.DOC_MAX_PAGES_PER_SOURCE
+
+        while to_visit and len(visited) < max_pages:
+            url = to_visit.pop(0)
+            if url in visited:
+                continue
+            visited.add(url)
+
+            try:
+                html = self._fetch_html(url)
+                if not html:
+                    continue
+
+                text, title = self._extract_content(html, url)
+                cleaned = self._clean_content(text)
+                if cleaned and len(cleaned) > 300:
+                    results.append({
+                        'title': title or url,
+                        'source_url': url,
+                        'content': cleaned,
+                        'doc_type': doc_type,
+                        'version': 'latest',
+                        'processed_at': time.time()
+                    })
+
+                # Enfileirar links internos
+                for link in self._extract_links(html, base_url):
+                    if link not in visited and link not in to_visit and len(visited) + len(to_visit) < max_pages:
+                        to_visit.append(link)
+
+                # Respeitar intervalo entre requisições
+                time.sleep(max(0.0, Config.DOC_CRAWL_DELAY))
+
+            except Exception as e:
+                logger.warning(f"Error processing URL {url}: {e}")
+                continue
+
+        logger.info(f"Crawled {len(visited)} pages, extracted {len(results)} documents for {doc_type}")
+        return results
+
+    def _fetch_html(self, url: str) -> Optional[str]:
+        resp = self.session.get(url, timeout=self.timeout)
+        if not resp.ok:
+            return None
+        return resp.text
+
+    def _extract_links(self, html: str, base_url: str) -> List[str]:
+        links: List[str] = []
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+            for a in soup.find_all('a', href=True):
+                href = a['href']
+                if href.startswith('#'):
+                    continue
+                abs_url = urljoin(base_url, href)
+                # restringe ao host/base
+                if abs_url.startswith(base_url) and self._is_probably_doc_page(abs_url):
+                    links.append(abs_url)
+        except Exception:
+            pass
+        # dedup mantendo ordem
+        deduped = []
+        seen: Set[str] = set()
+        for u in links:
+            if u not in seen:
+                seen.add(u)
+                deduped.append(u)
+        return deduped
+
+    def _is_probably_doc_page(self, url: str) -> bool:
+        parsed = urlparse(url)
+        # heurística simples: evitar assets binários
+        blacklist_ext = ('.png', '.jpg', '.jpeg', '.gif', '.svg', '.pdf', '.zip', '.tar', '.gz', '.mp4', '.mp3', '.ico')
+        if any(parsed.path.lower().endswith(ext) for ext in blacklist_ext):
+            return False
+        return True
+
+    def _extract_content(self, html: str, url: str) -> tuple[str, str]:
+        """Extract main textual content and title from HTML."""
+        try:
+            text = trafilatura.extract(filecontent=html, url=url) or ""
+        except Exception:
+            text = ""
+        title = ""
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+            title = (soup.title.string or '').strip() if soup.title else ''
+            if not text:
+                # fallback para texto bruto
+                body = soup.body or soup
+                text = body.get_text(separator='\n', strip=True)
+        except Exception:
+            pass
+        return text or "", title or ""
     
     def _process_react_docs(self, config: Dict[str, str]) -> List[Dict[str, Any]]:
         """Process React documentation"""

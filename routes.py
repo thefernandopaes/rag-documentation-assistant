@@ -4,7 +4,9 @@ import time
 import uuid
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, session, current_app
+from config import Config
 from models import Conversation, DocumentChunk
+from hashlib import sha256
 from app import db
 from rate_limiter import rate_limit_decorator
 from document_processor import DocumentProcessor
@@ -191,7 +193,10 @@ def api_stats():
                 'positive_feedback': positive_feedback,
                 'negative_feedback': negative_feedback
             },
-            'cache': cache_stats
+            'cache': cache_stats,
+            'system': {
+                'is_production': Config._is_production()
+            }
         })
         
     except Exception as e:
@@ -206,6 +211,11 @@ def api_stats():
 def api_initialize():
     """Initialize the RAG system with documents"""
     try:
+        # Protect in production with ADMIN_API_KEY
+        if Config._is_production():
+            provided = request.headers.get('X-Admin-Api-Key') or request.args.get('admin_key')
+            if not provided or provided != Config.ADMIN_API_KEY:
+                return jsonify({'error': 'Unauthorized'}), 401
         # Check if documents already exist
         existing_docs = DocumentChunk.query.count()
         if existing_docs > 0:
@@ -224,19 +234,24 @@ def api_initialize():
                 'message': 'Failed to process any documentation sources'
             }), 500
         
-        # Add documents to RAG engine
+        # Add documents to RAG engine (idempotent IDs inside RAGEngine)
         rag_engine = current_app.rag_engine
         rag_engine.add_documents(documents)
         
-        # Save document metadata to database
+        # Save document metadata to database with idempotency (content hash)
         for doc in documents:
+            content_hash = sha256(doc['content'].encode('utf-8')).hexdigest()
+            exists = DocumentChunk.query.filter_by(source_url=doc['source_url'], content_hash=content_hash).first()
+            if exists:
+                continue
             doc_chunk = DocumentChunk(
                 source_url=doc['source_url'],
                 title=doc['title'],
                 content=doc['content'][:1000],  # Store first 1000 chars for reference
                 chunk_index=0,
                 doc_type=doc['doc_type'],
-                version=doc['version']
+                version=doc['version'],
+                content_hash=content_hash
             )
             db.session.add(doc_chunk)
         

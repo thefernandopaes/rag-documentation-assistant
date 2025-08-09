@@ -9,6 +9,7 @@ from openai import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from config import Config
 from cache_manager import CacheManager
+from hashlib import sha256
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +71,16 @@ class RAGEngine:
                         'doc_type': doc.get('doc_type', ''),
                         'chunk_index': i,
                         'version': doc.get('version', ''),
+                        'content_hash': sha256(chunk.encode('utf-8')).hexdigest(),
                     }
                     
                     # Create unique ID
-                    doc_id = f"{doc.get('doc_type', 'unknown')}_{hash(doc.get('source_url', ''))}_chunk_{i}"
+                    # deterministic idempotent ID using source + chunk hash + index
+                    doc_id = (
+                        f"{doc.get('doc_type', 'unknown')}_"
+                        f"{sha256((doc.get('source_url','') + str(i)).encode('utf-8')).hexdigest()}_"
+                        f"{metadata['content_hash'][:16]}"
+                    )
                     
                     all_chunks.append(chunk)
                     all_embeddings.append(embedding)
@@ -92,6 +99,39 @@ class RAGEngine:
             
         except Exception as e:
             logger.error(f"Error adding documents: {e}")
+            raise
+
+    def upsert_documents(self, documents: List[Dict[str, Any]]) -> None:
+        """Replace existing documents for given sources with new content (idempotent refresh).
+
+        For each document, removes previous vectors by source_url+doc_type and inserts fresh chunks.
+        """
+        try:
+            # First, delete existing vectors for each unique (source_url, doc_type)
+            unique_keys = set(
+                (
+                    doc.get('source_url', ''),
+                    doc.get('doc_type', ''),
+                )
+                for doc in documents
+            )
+
+            for source_url, doc_type in unique_keys:
+                if not source_url:
+                    continue
+                try:
+                    self.collection.delete(where={
+                        'source_url': source_url,
+                        'doc_type': doc_type,
+                    })
+                except Exception as del_err:
+                    logger.warning(f"Delete failed for {source_url} ({doc_type}): {del_err}")
+
+            # Then add new vectors
+            self.add_documents(documents)
+
+        except Exception as e:
+            logger.error(f"Error upserting documents: {e}")
             raise
     
     def _get_embedding(self, text: str) -> List[float]:

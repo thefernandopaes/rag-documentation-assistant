@@ -60,7 +60,8 @@ class ChatInterface {
             const response = await fetch('/api/stats');
             const data = await response.json();
             
-            if (data.documents.document_count === 0) {
+            const isProd = data.system && data.system.is_production;
+            if (!isProd && data.documents.document_count === 0) {
                 this.showInitializeModal();
             }
         } catch (error) {
