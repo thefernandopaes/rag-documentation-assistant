@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import hashlib
 from typing import List, Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings
@@ -355,3 +356,341 @@ Please provide a comprehensive answer with code examples if applicable. Format y
         except Exception as e:
             logger.error(f"Error getting collection stats: {e}")
             return {'document_count': 0, 'collection_name': Config.COLLECTION_NAME}
+
+
+class APIChunker:
+    """Chunking strategy specialized for API documentation."""
+    
+    def __init__(self, chunk_size: int = 800, chunk_overlap: int = 150):
+        """Initialize API chunker with configurable parameters."""
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        
+        # API-specific separators for better chunking
+        self.api_separators = [
+            "\n## ",      # Headers (endpoints)
+            "\n### ",     # Sub-headers (parameters, responses)
+            "\n#### ",    # Sub-sub-headers
+            "\n\n",       # Paragraph breaks
+            "\n",         # Line breaks
+            ". ",         # Sentence endings
+            ", ",         # Comma separations
+            " ",          # Word boundaries
+            ""            # Character fallback
+        ]
+        
+        # Initialize standard text splitter as fallback
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            separators=self.api_separators
+        )
+        
+        logger.info(f"APIChunker initialized with chunk_size={chunk_size}, overlap={chunk_overlap}")
+    
+    def chunk_api_document(self, document: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Chunk an API document using specialized strategies.
+        
+        Args:
+            document: Document with API-specific metadata
+            
+        Returns:
+            List of chunked documents with preserved metadata
+        """
+        doc_type = document.get('doc_type', 'unknown')
+        
+        if doc_type == 'api_endpoint':
+            return self.chunk_by_endpoint(document)
+        elif doc_type == 'api_overview':
+            return self.chunk_by_sections(document)
+        elif doc_type == 'openapi':
+            return self.chunk_openapi_spec(document)
+        elif doc_type in ['api_html', 'postman_request']:
+            return self.chunk_by_structure(document)
+        else:
+            # Fallback to standard chunking
+            return self.chunk_standard(document)
+    
+    def chunk_by_endpoint(self, api_doc: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Create chunks specialized for API endpoints."""
+        chunks = []
+        content = api_doc.get('content', '')
+        
+        # Get endpoint metadata
+        endpoint_data = api_doc.get('endpoint_data', {})
+        method = endpoint_data.get('method', 'GET')
+        path = endpoint_data.get('path', '/')
+        
+        # Main endpoint chunk
+        main_chunk_content = self._create_endpoint_summary(api_doc)
+        main_chunk = {
+            **api_doc,
+            'content': main_chunk_content,
+            'chunk_type': 'endpoint_summary',
+            'chunk_index': 0,
+            'content_hash': self._generate_content_hash(main_chunk_content),
+            'api_method': method,
+            'api_path': path
+        }
+        chunks.append(main_chunk)
+        
+        # Parameter chunks (if parameters are complex)
+        parameters = endpoint_data.get('parameters', [])
+        if len(parameters) > 3:  # Many parameters deserve separate chunk
+            param_content = self._create_parameters_chunk(parameters, method, path)
+            param_chunk = {
+                **api_doc,
+                'content': param_content,
+                'chunk_type': 'parameters',
+                'chunk_index': 1,
+                'content_hash': self._generate_content_hash(param_content),
+                'api_method': method,
+                'api_path': path,
+                'title': f"{method} {path} - Parameters"
+            }
+            chunks.append(param_chunk)
+        
+        # Response chunks (if responses are detailed)
+        responses = endpoint_data.get('responses', [])
+        if len(responses) > 2:  # Multiple responses deserve separate chunk
+            response_content = self._create_responses_chunk(responses, method, path, content)
+            response_chunk = {
+                **api_doc,
+                'content': response_content,
+                'chunk_type': 'responses',
+                'chunk_index': 2,
+                'content_hash': self._generate_content_hash(response_content),
+                'api_method': method,
+                'api_path': path,
+                'title': f"{method} {path} - Responses"
+            }
+            chunks.append(response_chunk)
+        
+        # Code example chunks
+        if 'code_examples' in api_doc:
+            for i, example in enumerate(api_doc.get('code_examples', [])):
+                if len(str(example)) > 200:  # Large examples get their own chunk
+                    example_content = self._create_example_chunk(example, method, path)
+                    example_chunk = {
+                        **api_doc,
+                        'content': example_content,
+                        'chunk_type': 'code_example',
+                        'chunk_index': 3 + i,
+                        'content_hash': self._generate_content_hash(example_content),
+                        'api_method': method,
+                        'api_path': path,
+                        'title': f"{method} {path} - {example.get('language', 'Code')} Example"
+                    }
+                    chunks.append(example_chunk)
+        
+        return chunks
+    
+    def chunk_by_sections(self, api_doc: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Chunk API overview document by logical sections."""
+        content = api_doc.get('content', '')
+        chunks = []
+        
+        # Split by headers
+        sections = self._split_by_headers(content)
+        
+        for i, section in enumerate(sections):
+            if len(section.strip()) < 50:  # Skip very small sections
+                continue
+                
+            chunk = {
+                **api_doc,
+                'content': section.strip(),
+                'chunk_type': 'api_section',
+                'chunk_index': i,
+                'content_hash': self._generate_content_hash(section.strip()),
+                'title': f"{api_doc.get('title', 'API Overview')} - Section {i+1}"
+            }
+            chunks.append(chunk)
+        
+        return chunks if chunks else [api_doc]  # Return original if no sections found
+    
+    def chunk_openapi_spec(self, api_doc: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Chunk OpenAPI specification documents."""
+        # For OpenAPI specs, we typically want to preserve endpoint integrity
+        return self.chunk_by_endpoint(api_doc)
+    
+    def chunk_by_structure(self, api_doc: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Chunk by document structure (headers, code blocks, etc.)."""
+        content = api_doc.get('content', '')
+        
+        # Use standard text splitter but with API-aware separators
+        text_chunks = self.text_splitter.split_text(content)
+        
+        chunks = []
+        for i, chunk_content in enumerate(text_chunks):
+            if len(chunk_content.strip()) < 50:  # Skip tiny chunks
+                continue
+                
+            chunk = {
+                **api_doc,
+                'content': chunk_content.strip(),
+                'chunk_type': 'structured',
+                'chunk_index': i,
+                'content_hash': self._generate_content_hash(chunk_content.strip())
+            }
+            chunks.append(chunk)
+        
+        return chunks if chunks else [api_doc]
+    
+    def chunk_standard(self, document: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Standard chunking for non-API documents."""
+        content = document.get('content', '')
+        text_chunks = self.text_splitter.split_text(content)
+        
+        chunks = []
+        for i, chunk_content in enumerate(text_chunks):
+            if len(chunk_content.strip()) < 50:
+                continue
+                
+            chunk = {
+                **document,
+                'content': chunk_content.strip(),
+                'chunk_type': 'standard',
+                'chunk_index': i,
+                'content_hash': self._generate_content_hash(chunk_content.strip())
+            }
+            chunks.append(chunk)
+        
+        return chunks if chunks else [document]
+    
+    def _create_endpoint_summary(self, api_doc: Dict[str, Any]) -> str:
+        """Create a concise endpoint summary."""
+        endpoint_data = api_doc.get('endpoint_data', {})
+        method = endpoint_data.get('method', 'GET')
+        path = endpoint_data.get('path', '/')
+        summary = endpoint_data.get('summary', '')
+        description = endpoint_data.get('description', '')
+        
+        summary_parts = [f"# {method} {path}"]
+        
+        if summary:
+            summary_parts.append(f"\n**Summary:** {summary}")
+        
+        if description:
+            summary_parts.append(f"\n**Description:** {description}")
+        
+        # Add key information
+        parameters = endpoint_data.get('parameters', [])
+        if parameters:
+            required_params = [p for p in parameters if p.get('required', False)]
+            if required_params:
+                param_names = [p.get('name', 'unknown') for p in required_params]
+                summary_parts.append(f"\n**Required Parameters:** {', '.join(param_names)}")
+        
+        tags = endpoint_data.get('tags', [])
+        if tags:
+            summary_parts.append(f"\n**Categories:** {', '.join(tags)}")
+        
+        return '\n'.join(summary_parts)
+    
+    def _create_parameters_chunk(self, parameters: List[Dict[str, Any]], method: str, path: str) -> str:
+        """Create a detailed parameters chunk."""
+        content_parts = [f"# {method} {path} - Parameters"]
+        
+        for param in parameters:
+            param_name = param.get('name', 'unknown')
+            param_type = param.get('type', param.get('schema', {}).get('type', 'string'))
+            param_in = param.get('in', 'query')
+            param_required = param.get('required', False)
+            param_desc = param.get('description', '')
+            
+            required_text = " (required)" if param_required else " (optional)"
+            content_parts.append(f"\n## {param_name}")
+            content_parts.append(f"- **Type:** {param_type}")
+            content_parts.append(f"- **Location:** {param_in}")
+            content_parts.append(f"- **Required:** {'Yes' if param_required else 'No'}")
+            if param_desc:
+                content_parts.append(f"- **Description:** {param_desc}")
+        
+        return '\n'.join(content_parts)
+    
+    def _create_responses_chunk(self, responses: List[str], method: str, path: str, full_content: str) -> str:
+        """Create a detailed responses chunk."""
+        content_parts = [f"# {method} {path} - Responses"]
+        
+        # Extract response information from full content
+        # This is a simplified extraction - in practice, you'd want more sophisticated parsing
+        response_section = ""
+        if "### Responses" in full_content:
+            response_section = full_content.split("### Responses")[1].split("###")[0]
+        
+        if response_section:
+            content_parts.append(response_section.strip())
+        else:
+            # Fallback: list response codes
+            content_parts.append(f"\n**Response Codes:** {', '.join(responses)}")
+        
+        return '\n'.join(content_parts)
+    
+    def _create_example_chunk(self, example: Dict[str, Any], method: str, path: str) -> str:
+        """Create a code example chunk."""
+        language = example.get('language', 'code')
+        code = example.get('code', str(example))
+        title = example.get('title', f"{language} Example")
+        
+        content_parts = [
+            f"# {method} {path} - {title}",
+            f"\n```{language}",
+            code,
+            "```"
+        ]
+        
+        if 'explanation' in example:
+            content_parts.append(f"\n**Explanation:** {example['explanation']}")
+        
+        return '\n'.join(content_parts)
+    
+    def _split_by_headers(self, content: str) -> List[str]:
+        """Split content by headers (# ## ###)."""
+        import re
+        
+        # Split by headers while preserving them
+        header_pattern = r'(^#{1,4}\s+.*$)'
+        parts = re.split(header_pattern, content, flags=re.MULTILINE)
+        
+        sections = []
+        current_section = ""
+        
+        for part in parts:
+            if re.match(r'^#{1,4}\s+', part):  # This is a header
+                if current_section.strip():
+                    sections.append(current_section.strip())
+                current_section = part
+            else:
+                current_section += part
+        
+        if current_section.strip():
+            sections.append(current_section.strip())
+        
+        return sections
+    
+    def _generate_content_hash(self, content: str) -> str:
+        """Generate SHA-256 hash for content."""
+        return hashlib.sha256(content.encode('utf-8')).hexdigest()
+    
+    def get_chunking_stats(self, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Get statistics about chunked documents."""
+        if not chunks:
+            return {}
+        
+        chunk_types = {}
+        chunk_sizes = []
+        
+        for chunk in chunks:
+            chunk_type = chunk.get('chunk_type', 'unknown')
+            chunk_types[chunk_type] = chunk_types.get(chunk_type, 0) + 1
+            chunk_sizes.append(len(chunk.get('content', '')))
+        
+        return {
+            'total_chunks': len(chunks),
+            'chunk_types': chunk_types,
+            'avg_chunk_size': sum(chunk_sizes) / len(chunk_sizes) if chunk_sizes else 0,
+            'min_chunk_size': min(chunk_sizes) if chunk_sizes else 0,
+            'max_chunk_size': max(chunk_sizes) if chunk_sizes else 0
+        }
