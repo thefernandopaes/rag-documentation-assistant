@@ -16,16 +16,23 @@ class Config:
     CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_db")
     COLLECTION_NAME = "docrag_embeddings"
     
-    # Rate Limiting
-    RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "10"))
+    # Rate Limiting (Enhanced for API documentation workloads)
+    RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "15"))
+    RATE_LIMIT_BURST = int(os.getenv("RATE_LIMIT_BURST", "5"))
     
-    # Document Processing
-    CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
+    # Document Processing (Optimized for API documentation)
+    CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1200"))  # Larger chunks for API documentation
     CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
     DOC_USE_SAMPLE = (os.getenv("DOC_USE_SAMPLE", "true").lower() == "true")
-    DOC_MAX_PAGES_PER_SOURCE = int(os.getenv("DOC_MAX_PAGES_PER_SOURCE", "50"))
-    DOC_CRAWL_TIMEOUT = int(os.getenv("DOC_CRAWL_TIMEOUT", "15"))
-    DOC_CRAWL_DELAY = float(os.getenv("DOC_CRAWL_DELAY", "0.5"))
+    DOC_MAX_PAGES_PER_SOURCE = int(os.getenv("DOC_MAX_PAGES_PER_SOURCE", "100"))  # More pages for API docs
+    DOC_CRAWL_TIMEOUT = int(os.getenv("DOC_CRAWL_TIMEOUT", "30"))  # Longer timeout for API discovery
+    DOC_CRAWL_DELAY = float(os.getenv("DOC_CRAWL_DELAY", "1.0"))  # Respectful crawling
+    
+    # API-Specific Configuration
+    API_DISCOVERY_ENABLED = (os.getenv("API_DISCOVERY_ENABLED", "true").lower() == "true")
+    API_CACHE_SPEC_TTL = int(os.getenv("API_CACHE_SPEC_TTL", "86400"))  # 24 hours
+    API_MAX_ENDPOINTS_PER_SPEC = int(os.getenv("API_MAX_ENDPOINTS_PER_SPEC", "200"))
+    CODE_EXAMPLES_LANGUAGES = os.getenv("CODE_EXAMPLES_LANGUAGES", "curl,python,javascript,nodejs,php").split(",")
     
     # Cache Configuration
     CACHE_TTL = int(os.getenv("CACHE_TTL", "3600"))  # 1 hour
@@ -36,7 +43,34 @@ class Config:
     DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
     DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
     
-    # Documentation Sources
+    # API Documentation Sources (Updated for API-focused system)
+    API_DOC_SOURCES = {
+        "stripe": {
+            "base_url": "https://stripe.com/docs/api",
+            "openapi_url": "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json",
+            "type": "rest_api"
+        },
+        "github": {
+            "base_url": "https://docs.github.com/en/rest",
+            "openapi_url": "https://github.com/github/rest-api-description/raw/main/descriptions/api.github.com/api.github.com.json",
+            "type": "rest_api"
+        },
+        "openai": {
+            "base_url": "https://platform.openai.com/docs/api-reference",
+            "openapi_url": "https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml",
+            "type": "rest_api"
+        },
+        "twilio": {
+            "base_url": "https://www.twilio.com/docs/usage/api",
+            "type": "rest_api"
+        },
+        "discord": {
+            "base_url": "https://discord.com/developers/docs/intro",
+            "type": "rest_api"
+        }
+    }
+    
+    # Legacy documentation sources (kept for backward compatibility)
     DOC_SOURCES = {
         "react": {
             "base_url": "https://react.dev/",
@@ -55,9 +89,19 @@ class Config:
         }
     }
     
-    # Response Configuration
-    MAX_RESPONSE_TOKENS = int(os.getenv("MAX_RESPONSE_TOKENS", "2000"))
-    TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
+    # Response Configuration (Enhanced for API documentation)
+    MAX_RESPONSE_TOKENS = int(os.getenv("MAX_RESPONSE_TOKENS", "3000"))  # More tokens for detailed API responses
+    TEMPERATURE = float(os.getenv("TEMPERATURE", "0.3"))  # Lower temperature for more consistent API documentation
+    
+    # Monitoring and Analytics
+    MONITORING_ENABLED = (os.getenv("MONITORING_ENABLED", "false").lower() == "true")
+    ANALYTICS_RETENTION_DAYS = int(os.getenv("ANALYTICS_RETENTION_DAYS", "90"))
+    ERROR_REPORTING_ENABLED = (os.getenv("ERROR_REPORTING_ENABLED", "true").lower() == "true")
+    
+    # Security Configuration
+    API_KEY_ROTATION_DAYS = int(os.getenv("API_KEY_ROTATION_DAYS", "90"))
+    REQUEST_SIZE_LIMIT = os.getenv("REQUEST_SIZE_LIMIT", "16KB")
+    ALLOWED_DOMAINS = os.getenv("ALLOWED_DOMAINS", "").split(",") if os.getenv("ALLOWED_DOMAINS") else []
     
     @classmethod
     def validate_config(cls):
