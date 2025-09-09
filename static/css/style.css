@@ -65,17 +65,20 @@ body {
 .code-block {
     position: relative;
     margin: 1rem 0;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .code-header {
-    background-color: #2d3748;
+    background: linear-gradient(90deg, #2d3748 0%, #4a5568 100%);
     color: #e2e8f0;
     padding: 0.5rem 1rem;
-    border-radius: 0.375rem 0.375rem 0 0;
     display: flex;
-    justify-content: between;
+    justify-content: space-between;
     align-items: center;
     font-size: 0.875rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .copy-btn {
@@ -329,4 +332,285 @@ pre[class*="language-"] {
     height: 8px;
     border-radius: 50%;
     background-color: currentColor;
+}
+
+/* API-Specific Styling */
+
+/* HTTP Method styling */
+.http-method {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+}
+
+.method-get {
+    background-color: rgba(var(--bs-success-rgb), 0.2);
+    color: var(--success-color);
+    border: 1px solid rgba(var(--bs-success-rgb), 0.5);
+}
+
+.method-post {
+    background-color: rgba(var(--bs-primary-rgb), 0.2);
+    color: var(--primary-color);
+    border: 1px solid rgba(var(--bs-primary-rgb), 0.5);
+}
+
+.method-put {
+    background-color: rgba(var(--bs-warning-rgb), 0.2);
+    color: var(--warning-color);
+    border: 1px solid rgba(var(--bs-warning-rgb), 0.5);
+}
+
+.method-patch {
+    background-color: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.5);
+}
+
+.method-delete {
+    background-color: rgba(var(--bs-danger-rgb), 0.2);
+    color: var(--danger-color);
+    border: 1px solid rgba(var(--bs-danger-rgb), 0.5);
+}
+
+/* API Endpoints */
+.api-endpoints {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: rgba(var(--bs-success-rgb), 0.05);
+    border-left: 3px solid var(--success-color);
+    border-radius: 0.375rem;
+}
+
+.endpoint-item {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 0.375rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.endpoint-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.endpoint-path {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+}
+
+.endpoint-description {
+    color: #a0aec0;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+/* API Authentication */
+.api-authentication {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: rgba(var(--bs-warning-rgb), 0.05);
+    border-left: 3px solid var(--warning-color);
+    border-radius: 0.375rem;
+}
+
+.auth-info {
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 0.25rem;
+}
+
+.auth-type {
+    display: inline-block;
+    background-color: rgba(var(--bs-warning-rgb), 0.2);
+    color: var(--warning-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.auth-description {
+    color: #a0aec0;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+/* API Parameters */
+.api-parameters {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: rgba(var(--bs-info-rgb), 0.05);
+    border-left: 3px solid var(--info-color);
+    border-radius: 0.375rem;
+}
+
+.parameter-item {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 0.375rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.parameter-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.parameter-name {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    font-weight: bold;
+}
+
+.parameter-type {
+    background-color: rgba(var(--bs-info-rgb), 0.2);
+    color: var(--info-color);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+.parameter-required {
+    background-color: rgba(var(--bs-danger-rgb), 0.2);
+    color: var(--danger-color);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.parameter-optional {
+    background-color: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.parameter-description {
+    color: #a0aec0;
+    font-size: 0.875rem;
+}
+
+/* API Response Format */
+.api-response-format {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: rgba(123, 31, 162, 0.05);
+    border-left: 3px solid #7b1fa2;
+    border-radius: 0.375rem;
+}
+
+.response-format-content pre {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* API Error Codes */
+.api-error-codes {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: rgba(var(--bs-danger-rgb), 0.05);
+    border-left: 3px solid var(--danger-color);
+    border-radius: 0.375rem;
+}
+
+.error-code-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 0.25rem;
+}
+
+.error-code {
+    background-color: rgba(var(--bs-danger-rgb), 0.2);
+    color: var(--danger-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: bold;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    min-width: 60px;
+    text-align: center;
+}
+
+.error-message {
+    color: #a0aec0;
+    font-size: 0.875rem;
+}
+
+/* Code block enhancements for API examples */
+.code-block .code-header {
+    background: linear-gradient(90deg, #2d3748 0%, #4a5568 100%);
+    position: relative;
+}
+
+.code-block .code-header::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
+}
+
+/* Syntax highlighting enhancements */
+code[class*="language-"], pre[class*="language-"] {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    line-height: 1.4 !important;
+}
+
+/* Enhanced copy button */
+.copy-btn {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.copy-btn::before {
+    content: 'Copy';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+}
+
+.copy-btn:hover::before {
+    opacity: 1;
 }

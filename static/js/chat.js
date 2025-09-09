@@ -153,11 +153,16 @@ class ChatInterface {
             const data = await response.json();
             
             if (response.ok) {
-                // Add assistant response
+                // Add assistant response with enhanced API fields
                 this.addMessage('assistant', data.response, {
-                    codeExamples: data.code_examples,
+                    codeExamples: data.examples || data.code_examples,
                     sources: data.sources,
-                    relatedQuestions: data.related_questions,
+                    relatedQuestions: data.related_concepts || data.related_questions,
+                    endpoints: data.endpoints,
+                    authentication: data.authentication,
+                    parameters: data.parameters,
+                    responseFormat: data.response_format,
+                    errorCodes: data.error_codes,
                     responseTime: data.response_time,
                     cached: data.cached
                 });
@@ -216,6 +221,11 @@ class ChatInterface {
                             ${isError ? `<div class="text-danger">${this.escapeHtml(content)}</div>` : this.formatMessage(content)}
                             
                             ${options.codeExamples ? this.renderCodeExamples(options.codeExamples) : ''}
+                            ${options.endpoints ? this.renderEndpoints(options.endpoints) : ''}
+                            ${options.authentication ? this.renderAuthentication(options.authentication) : ''}
+                            ${options.parameters ? this.renderParameters(options.parameters) : ''}
+                            ${options.responseFormat ? this.renderResponseFormat(options.responseFormat) : ''}
+                            ${options.errorCodes ? this.renderErrorCodes(options.errorCodes) : ''}
                             ${options.sources ? this.renderSources(options.sources) : ''}
                             ${options.relatedQuestions ? this.renderRelatedQuestions(options.relatedQuestions) : ''}
                             
@@ -340,6 +350,12 @@ class ChatInterface {
     
     getSourceIcon(type) {
         switch (type) {
+            case 'openapi': return 'fas fa-code text-success';
+            case 'swagger': return 'fas fa-code text-success';
+            case 'rest': return 'fas fa-exchange-alt text-info';
+            case 'graphql': return 'fas fa-project-diagram text-purple';
+            case 'postman': return 'fas fa-paper-plane text-orange';
+            case 'api': return 'fas fa-plug text-primary';
             case 'react': return 'fab fa-react text-info';
             case 'python': return 'fab fa-python text-warning';
             case 'fastapi': return 'fas fa-lightning-bolt text-success';
@@ -430,6 +446,98 @@ class ChatInterface {
                 </div>
             `;
         }
+    }
+    
+    renderEndpoints(endpoints) {
+        if (!endpoints || endpoints.length === 0) return '';
+        
+        const endpointItems = endpoints.map(endpoint => {
+            const method = endpoint.method || 'GET';
+            const methodClass = method.toLowerCase();
+            return `
+                <div class="endpoint-item">
+                    <div class="endpoint-header">
+                        <span class="http-method method-${methodClass}">${method}</span>
+                        <code class="endpoint-path">${this.escapeHtml(endpoint.path)}</code>
+                    </div>
+                    ${endpoint.description ? `<div class="endpoint-description">${this.escapeHtml(endpoint.description)}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        return `
+            <div class="api-endpoints mt-3">
+                <h6><i class="fas fa-link me-2"></i>Endpoints</h6>
+                ${endpointItems}
+            </div>
+        `;
+    }
+    
+    renderAuthentication(auth) {
+        if (!auth) return '';
+        
+        return `
+            <div class="api-authentication mt-3">
+                <h6><i class="fas fa-lock me-2"></i>Authentication</h6>
+                <div class="auth-info">
+                    <span class="auth-type">${this.escapeHtml(auth.type || 'Unknown')}</span>
+                    ${auth.description ? `<div class="auth-description">${this.escapeHtml(auth.description)}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    renderParameters(parameters) {
+        if (!parameters || parameters.length === 0) return '';
+        
+        const paramItems = parameters.map(param => `
+            <div class="parameter-item">
+                <div class="parameter-header">
+                    <code class="parameter-name">${this.escapeHtml(param.name)}</code>
+                    <span class="parameter-type">${this.escapeHtml(param.type || 'string')}</span>
+                    ${param.required ? '<span class="parameter-required">required</span>' : '<span class="parameter-optional">optional</span>'}
+                </div>
+                ${param.description ? `<div class="parameter-description">${this.escapeHtml(param.description)}</div>` : ''}
+            </div>
+        `).join('');
+        
+        return `
+            <div class="api-parameters mt-3">
+                <h6><i class="fas fa-cogs me-2"></i>Parameters</h6>
+                ${paramItems}
+            </div>
+        `;
+    }
+    
+    renderResponseFormat(format) {
+        if (!format) return '';
+        
+        return `
+            <div class="api-response-format mt-3">
+                <h6><i class="fas fa-file-code me-2"></i>Response Format</h6>
+                <div class="response-format-content">
+                    <pre><code class="language-json">${this.escapeHtml(JSON.stringify(format, null, 2))}</code></pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    renderErrorCodes(errorCodes) {
+        if (!errorCodes || errorCodes.length === 0) return '';
+        
+        const errorItems = errorCodes.map(error => `
+            <div class="error-code-item">
+                <span class="error-code">${error.code}</span>
+                <span class="error-message">${this.escapeHtml(error.message || error.description || '')}</span>
+            </div>
+        `).join('');
+        
+        return `
+            <div class="api-error-codes mt-3">
+                <h6><i class="fas fa-exclamation-triangle me-2"></i>Error Codes</h6>
+                ${errorItems}
+            </div>
+        `;
     }
     
     scrollToBottom() {
