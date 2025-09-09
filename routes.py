@@ -68,7 +68,7 @@ def api_chat():
             conversation = Conversation(
                 session_id=session_id,
                 user_query=query,
-                ai_response=response_data['response'],
+                ai_response=response_data.get('answer', response_data.get('response', '')),
                 sources=json.dumps(response_data.get('sources', [])),
                 response_time=response_data.get('response_time', time.time() - start_time)
             )
@@ -78,14 +78,44 @@ def api_chat():
             logger.error(f"Error saving conversation: {e}")
             # Continue even if saving fails
         
-        return jsonify({
-            'response': response_data['response'],
-            'code_examples': response_data.get('code_examples', []),
+        # Build enhanced response structure for API documentation
+        api_response = {
+            'response': response_data.get('answer', response_data.get('response', '')),
             'sources': response_data.get('sources', []),
-            'related_questions': response_data.get('related_questions', []),
             'response_time': response_data.get('response_time', 0),
             'cached': response_data.get('cached', False)
-        })
+        }
+        
+        # Add API-specific fields if present
+        if 'examples' in response_data:
+            api_response['examples'] = response_data['examples']
+        elif 'code_examples' in response_data:
+            api_response['examples'] = response_data['code_examples']
+        else:
+            api_response['examples'] = []
+            
+        # Enhanced API fields
+        if 'endpoints' in response_data:
+            api_response['endpoints'] = response_data['endpoints']
+            
+        if 'authentication' in response_data:
+            api_response['authentication'] = response_data['authentication']
+            
+        if 'parameters' in response_data:
+            api_response['parameters'] = response_data['parameters']
+            
+        if 'response_format' in response_data:
+            api_response['response_format'] = response_data['response_format']
+            
+        if 'error_codes' in response_data:
+            api_response['error_codes'] = response_data['error_codes']
+            
+        if 'related_concepts' in response_data:
+            api_response['related_concepts'] = response_data['related_concepts']
+        elif 'related_questions' in response_data:
+            api_response['related_concepts'] = response_data['related_questions']
+        
+        return jsonify(api_response)
         
     except Exception as e:
         logger.error(f"Error in chat API: {e}")

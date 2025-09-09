@@ -10,6 +10,7 @@ from openai import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from config import Config
 from cache_manager import CacheManager
+from code_generator import CodeExampleGenerator
 from hashlib import sha256
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,9 @@ class RAGEngine:
         
         # Initialize cache
         self.cache = CacheManager()
+        
+        # Initialize code generator
+        self.code_generator = CodeExampleGenerator()
         
         logger.info("RAG Engine initialized successfully")
     
@@ -266,37 +270,15 @@ class RAGEngine:
     def _generate_llm_response(self, query: str, context: str, history: str) -> Dict[str, Any]:
         """Generate response using OpenAI GPT"""
         try:
-            system_prompt = """You are DocRag, an expert technical documentation assistant specializing in React, Python, and FastAPI. 
+            # Detect if this is an API-related query
+            is_api_query = self._is_api_related_query(query, context)
+            
+            if is_api_query:
+                system_prompt = self._get_api_specialized_prompt()
+            else:
+                system_prompt = self._get_standard_prompt()
 
-Your role is to:
-1. Provide accurate, contextual answers based on official documentation
-2. Generate functional code examples when appropriate
-3. Explain concepts clearly for both beginners and experienced developers
-4. Cite sources properly
-5. Suggest related questions
-
-Guidelines:
-- Always base your answers on the provided context
-- Generate working code examples with proper syntax highlighting
-- Explain code step-by-step when helpful
-- Be concise but comprehensive
-- If you don't know something, say so clearly
-- Format code examples properly with language tags
-
-Response format should be JSON with these fields:
-- response: Main answer (markdown format)
-- code_examples: Array of code blocks with language and explanation
-- related_questions: Array of 2-3 suggested follow-up questions"""
-
-            user_prompt = f"""Context from documentation:
-{context}
-
-Previous conversation:
-{history}
-
-User question: {query}
-
-Please provide a comprehensive answer with code examples if applicable. Format your response as JSON."""
+            user_prompt = self._build_user_prompt(query, context, history, is_api_query)
 
             response = self.openai_client.chat.completions.create(
                 model=Config.OPENAI_MODEL,
@@ -312,7 +294,13 @@ Please provide a comprehensive answer with code examples if applicable. Format y
             try:
                 content = response.choices[0].message.content
                 if content:
-                    return json.loads(content)
+                    result = json.loads(content)
+                    
+                    # Enhance with automatic code generation for API queries
+                    if is_api_query and 'endpoints' in result:
+                        result = self._enhance_with_code_examples(result, context)
+                    
+                    return result
             except json.JSONDecodeError:
                 # Fallback if JSON parsing fails
                 return {
@@ -344,6 +332,289 @@ Please provide a comprehensive answer with code examples if applicable. Format y
                 seen_sources.add(source_key)
         
         return sources[:3]  # Limit to top 3 sources
+    
+    def _is_api_related_query(self, query: str, context: str) -> bool:
+        """Detect if query is API-related based on query text and context."""
+        api_keywords = [
+            'api', 'endpoint', 'rest', 'post', 'get', 'put', 'delete', 'patch',
+            'authentication', 'auth', 'token', 'bearer', 'api key', 'header',
+            'parameter', 'request', 'response', 'status code', 'curl', 'json',
+            'swagger', 'openapi', 'postman', 'webhook', 'rate limit'
+        ]
+        
+        query_lower = query.lower()
+        context_lower = context.lower()
+        
+        # Check if query contains API keywords
+        query_has_api_keywords = any(keyword in query_lower for keyword in api_keywords)
+        
+        # Check if context contains API-specific content
+        context_has_api_content = any([
+            'api_endpoint' in context_lower,
+            'api_overview' in context_lower,
+            'openapi' in context_lower,
+            'postman' in context_lower,
+            'method:' in context_lower and any(method in context_lower for method in ['get', 'post', 'put', 'delete']),
+            'endpoint:' in context_lower
+        ])
+        
+        return query_has_api_keywords or context_has_api_content
+    
+    def _get_api_specialized_prompt(self) -> str:
+        """Get system prompt specialized for API documentation."""
+        return """You are DocRag, an expert API documentation assistant specializing in REST APIs, GraphQL, webhooks, and API integration. 
+
+Your expertise includes:
+1. **API Endpoints**: Explaining HTTP methods, paths, parameters, and responses
+2. **Authentication**: OAuth, API keys, Bearer tokens, and security best practices  
+3. **Request/Response**: JSON schemas, headers, status codes, and error handling
+4. **Code Examples**: Multi-language examples (cURL, Python, JavaScript, etc.)
+5. **Integration**: SDKs, libraries, rate limiting, and production considerations
+
+Guidelines for API responses:
+- **Structure responses clearly**: endpoint details, parameters, examples, errors
+- **Include working code examples** in multiple languages when relevant
+- **Explain authentication methods** and security requirements
+- **Detail request/response formats** with JSON schemas when applicable
+- **Provide error handling guidance** including status codes and troubleshooting
+- **Reference official documentation** and best practices
+- **Suggest related endpoints** or integration patterns
+
+Response format (JSON):
+- **answer**: Comprehensive technical explanation (markdown format)
+- **examples**: Array of code examples with language, title, and executable code
+- **endpoints**: Array of relevant API endpoints mentioned
+- **authentication**: Authentication method and requirements (if applicable)
+- **parameters**: Key parameters with types and descriptions
+- **response_format**: Expected response structure and status codes
+- **error_codes**: Common error codes and their meanings
+- **related_concepts**: Related API concepts or endpoints
+- **sources**: Source documentation URLs referenced"""
+    
+    def _get_standard_prompt(self) -> str:
+        """Get system prompt for general documentation."""
+        return """You are DocRag, an expert technical documentation assistant specializing in React, Python, and FastAPI. 
+
+Your role is to:
+1. Provide accurate, contextual answers based on official documentation
+2. Generate functional code examples when appropriate
+3. Explain concepts clearly for both beginners and experienced developers
+4. Cite sources properly
+5. Suggest related questions
+
+Guidelines:
+- Always base your answers on the provided context
+- Generate working code examples with proper syntax highlighting
+- Explain code step-by-step when helpful
+- Be concise but comprehensive
+- If you don't know something, say so clearly
+- Format code examples properly with language tags
+
+Response format should be JSON with these fields:
+- response: Main answer (markdown format)
+- code_examples: Array of code blocks with language and explanation
+- related_questions: Array of 2-3 suggested follow-up questions"""
+    
+    def _build_user_prompt(self, query: str, context: str, history: str, is_api_query: bool) -> str:
+        """Build user prompt based on query type."""
+        
+        if is_api_query:
+            return f"""Context from API documentation:
+{context}
+
+Previous conversation:
+{history}
+
+API-related question: {query}
+
+Please provide a comprehensive API-focused answer including:
+1. Clear explanation of the API concept/endpoint
+2. Authentication requirements (if applicable)
+3. Request/response examples in multiple programming languages
+4. Parameter details (required vs optional)
+5. Common error codes and troubleshooting
+6. Best practices for implementation
+
+Format your response as JSON with all relevant API-specific fields."""
+        else:
+            return f"""Context from documentation:
+{context}
+
+Previous conversation:
+{history}
+
+User question: {query}
+
+Please provide a comprehensive answer with code examples if applicable. Format your response as JSON."""
+    
+    def _enhance_with_code_examples(self, result: Dict[str, Any], context: str) -> Dict[str, Any]:
+        """Enhance API response with automatically generated code examples."""
+        try:
+            # Extract endpoint information from context or result
+            endpoint_info = self._extract_endpoint_info(result, context)
+            
+            if endpoint_info:
+                # Generate code examples
+                auto_examples = self.code_generator.generate_multi_language_examples(endpoint_info)
+                
+                # Merge with existing examples
+                existing_examples = result.get('examples', [])
+                
+                # Combine and deduplicate examples
+                all_examples = existing_examples + auto_examples
+                unique_examples = self._deduplicate_examples(all_examples)
+                
+                result['examples'] = unique_examples
+                logger.info(f"Enhanced response with {len(auto_examples)} auto-generated code examples")
+            
+            return result
+            
+        except Exception as e:
+            logger.warning(f"Failed to enhance with code examples: {e}")
+            return result
+    
+    def _extract_endpoint_info(self, result: Dict[str, Any], context: str) -> Optional[Dict[str, Any]]:
+        """Extract endpoint information for code generation."""
+        try:
+            # Try to get endpoint info from result
+            endpoints = result.get('endpoints', [])
+            if not endpoints:
+                return None
+            
+            # Take the first endpoint for simplification
+            if isinstance(endpoints, list) and len(endpoints) > 0:
+                endpoint = endpoints[0]
+            else:
+                endpoint = endpoints
+            
+            # Extract method and path
+            if isinstance(endpoint, str):
+                # Parse "METHOD /path" format
+                parts = endpoint.split(' ', 1)
+                if len(parts) == 2:
+                    method, path = parts
+                else:
+                    method, path = 'GET', endpoint
+            else:
+                method = endpoint.get('method', 'GET')
+                path = endpoint.get('path', '/')
+            
+            # Build endpoint info for code generator
+            endpoint_info = {
+                'method': method,
+                'path': path,
+                'base_url': 'https://api.example.com',  # Default base URL
+                'parameters': self._extract_parameters_from_context(context),
+                'headers': {'Content-Type': 'application/json'},
+                'auth': self._extract_auth_from_result(result)
+            }
+            
+            # Add request body if POST/PUT/PATCH
+            if method.upper() in ['POST', 'PUT', 'PATCH']:
+                endpoint_info['request_body'] = self._extract_request_body_from_context(context)
+            
+            return endpoint_info
+            
+        except Exception as e:
+            logger.warning(f"Failed to extract endpoint info: {e}")
+            return None
+    
+    def _extract_parameters_from_context(self, context: str) -> List[Dict[str, Any]]:
+        """Extract parameter information from context."""
+        parameters = []
+        
+        try:
+            # Look for parameter sections in context
+            if 'parameters' in context.lower() or 'params' in context.lower():
+                lines = context.split('\n')
+                
+                for line in lines:
+                    line_lower = line.lower()
+                    if any(keyword in line_lower for keyword in ['required:', 'optional:', 'param']):
+                        # Simple parameter extraction
+                        if ':' in line:
+                            param_part = line.split(':', 1)[1].strip()
+                            if param_part:
+                                parameters.append({
+                                    'name': param_part.split(' ')[0].strip('`*'),
+                                    'type': 'string',
+                                    'required': 'required' in line_lower,
+                                    'in': 'query',
+                                    'description': param_part
+                                })
+            
+        except Exception as e:
+            logger.debug(f"Failed to extract parameters: {e}")
+        
+        return parameters[:5]  # Limit to first 5 parameters
+    
+    def _extract_auth_from_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract authentication info from result."""
+        auth_info = {}
+        
+        try:
+            # Check for authentication information in result
+            auth_section = result.get('authentication', '')
+            
+            if isinstance(auth_section, str):
+                auth_lower = auth_section.lower()
+                
+                if 'bearer' in auth_lower or 'token' in auth_lower:
+                    auth_info = {
+                        'type': 'bearer',
+                        'description': 'Bearer token authentication'
+                    }
+                elif 'api key' in auth_lower or 'api-key' in auth_lower:
+                    auth_info = {
+                        'type': 'api_key',
+                        'location': 'header',
+                        'name': 'X-API-Key',
+                        'description': 'API key authentication'
+                    }
+            
+        except Exception as e:
+            logger.debug(f"Failed to extract auth info: {e}")
+        
+        return auth_info
+    
+    def _extract_request_body_from_context(self, context: str) -> Dict[str, Any]:
+        """Extract request body example from context."""
+        try:
+            # Look for JSON examples in context
+            if '{' in context and '}' in context:
+                # Find JSON-like structures
+                start = context.find('{')
+                end = context.rfind('}') + 1
+                
+                if start != -1 and end > start:
+                    json_candidate = context[start:end]
+                    try:
+                        return json.loads(json_candidate)
+                    except json.JSONDecodeError:
+                        pass
+            
+            # Fallback: generic request body
+            return {
+                "key": "value",
+                "example": "data"
+            }
+            
+        except Exception as e:
+            logger.debug(f"Failed to extract request body: {e}")
+            return {}
+    
+    def _deduplicate_examples(self, examples: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """Remove duplicate examples based on language."""
+        seen_languages = set()
+        unique_examples = []
+        
+        for example in examples:
+            language = example.get('language', 'unknown')
+            if language not in seen_languages:
+                seen_languages.add(language)
+                unique_examples.append(example)
+        
+        return unique_examples
     
     def get_collection_stats(self) -> Dict[str, Any]:
         """Get statistics about the document collection"""
