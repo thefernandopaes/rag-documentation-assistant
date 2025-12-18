@@ -7,7 +7,7 @@ import chromadb
 from chromadb.config import Settings
 import openai
 from openai import OpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import Config
 from cache_manager import CacheManager
 from code_generator import CodeExampleGenerator

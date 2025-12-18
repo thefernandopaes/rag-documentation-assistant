@@ -41,7 +41,7 @@ def create_app():
     with app.app_context():
         # Import models to create tables
         import models  # noqa: F401
-        db.create_all()
+        # db.create_all()  # Commented out - tables already exist via Alembic migrations
         
         # Register routes
         from routes import main_bp
