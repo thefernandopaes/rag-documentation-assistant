@@ -50,12 +50,10 @@ async def lifespan(app: FastAPI):
         Config.validate_config()
         logger.info("Configuration validated successfully")
 
-        # Initialize RAG engine (will be async in Phase 3)
-        # For now, we'll import the existing sync version
-        # TODO Phase 3: Replace with rag_engine_async.RAGEngineAsync
-        from rag_engine import RAGEngine
-        app.state.rag_engine = RAGEngine()
-        logger.info("RAG engine initialized")
+        # Initialize async RAG engine (Phase 3 complete)
+        from rag_engine_async import AsyncRAGEngine
+        app.state.rag_engine = AsyncRAGEngine()
+        logger.info("Async RAG engine initialized")
 
         # Initialize database (async version in Phase 2)
         # TODO Phase 2: Initialize async database connection pool
@@ -101,9 +99,9 @@ def create_fastapi_app() -> FastAPI:
     _register_exception_handlers(app)
 
     # Register routes (Phase 4)
-    # TODO Phase 4: Register async routes
-    # from routes_async import router
-    # app.include_router(router)
+    from routes_async import router
+    app.include_router(router)
+    logger.info("Async routes registered")
 
     logger.info("FastAPI application created successfully")
 
