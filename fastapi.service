@@ -1,0 +1,65 @@
+# Systemd service for FastAPI application
+# Location: /etc/systemd/system/fastapi.service
+#
+# Installation:
+#   sudo cp fastapi.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable fastapi
+#   sudo systemctl start fastapi
+#
+# Management:
+#   sudo systemctl status fastapi
+#   sudo systemctl restart fastapi
+#   sudo systemctl stop fastapi
+#   sudo journalctl -u fastapi -f
+
+[Unit]
+Description=FastAPI RAG Documentation Assistant
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/rag-documentation-assistant
+
+# Environment
+EnvironmentFile=/var/www/rag-documentation-assistant/.env
+Environment="PATH=/var/www/rag-documentation-assistant/venv/bin"
+
+# Command
+ExecStart=/var/www/rag-documentation-assistant/venv/bin/uvicorn \
+    fastapi_app:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers ${WEB_CONCURRENCY:-4} \
+    --timeout-keep-alive 5 \
+    --proxy-headers \
+    --forwarded-allow-ips "*" \
+    --log-level info
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=2G
+CPUQuota=200%
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/rag-documentation-assistant/chroma_db /var/www/rag-documentation-assistant/cache
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fastapi
+
+[Install]
+WantedBy=multi-user.target
