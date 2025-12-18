@@ -664,3 +664,1047 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 ```'''
     }
 ]
+
+SAMPLE_DOCKER_DOCS = [
+    {
+        'title': 'Docker Getting Started',
+        'url': 'https://docs.docker.com/get-started/',
+        'content': '''# Getting Started with Docker
+
+Docker is an open platform for developing, shipping, and running applications. Docker enables you to separate your applications from your infrastructure so you can deliver software quickly.
+
+## What is Docker?
+
+Docker provides the ability to package and run an application in a loosely isolated environment called a container. Containers are lightweight and contain everything needed to run the application, so you don't need to rely on what's installed on the host.
+
+## Installation
+
+To install Docker, visit https://docs.docker.com/get-docker/ and follow the instructions for your operating system.
+
+## Basic Concepts
+
+### Images
+A Docker image is a read-only template with instructions for creating a Docker container. Images are built from a Dockerfile and can be shared through registries like Docker Hub.
+
+### Containers
+A container is a runnable instance of an image. You can create, start, stop, move, or delete a container using the Docker CLI or API.
+
+### Dockerfile
+A Dockerfile is a text file that contains instructions for building a Docker image. Each instruction in a Dockerfile creates a layer in the image.
+
+## Your First Container
+
+Run your first container:
+
+```bash
+docker run hello-world
+```
+
+This command:
+1. Downloads the hello-world image from Docker Hub (if not already present)
+2. Creates a new container from the image
+3. Runs the container
+4. Displays the output
+
+## Common Docker Commands
+
+```bash
+# List running containers
+docker ps
+
+# List all containers (including stopped)
+docker ps -a
+
+# List images
+docker images
+
+# Pull an image from Docker Hub
+docker pull nginx
+
+# Run a container
+docker run nginx
+
+# Run a container in detached mode
+docker run -d nginx
+
+# Run a container with a name
+docker run --name my-nginx nginx
+
+# Stop a container
+docker stop my-nginx
+
+# Remove a container
+docker rm my-nginx
+
+# Remove an image
+docker rmi nginx
+```'''
+    },
+    {
+        'title': 'Docker Dockerfile Best Practices',
+        'url': 'https://docs.docker.com/develop/dev-best-practices/',
+        'content': '''# Dockerfile Best Practices
+
+A Dockerfile is a script that contains instructions for building a Docker image. Following best practices ensures your images are efficient, secure, and maintainable.
+
+## Basic Dockerfile Structure
+
+```dockerfile
+# Use an official base image
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements file
+COPY requirements.txt .
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 8000
+
+# Define the command to run the application
+CMD ["python", "app.py"]
+```
+
+## Best Practices
+
+### 1. Use Official Base Images
+Start with official images from trusted sources:
+
+```dockerfile
+FROM python:3.11-slim
+FROM node:18-alpine
+FROM nginx:alpine
+```
+
+### 2. Minimize Layers
+Each RUN, COPY, and ADD instruction creates a new layer. Combine commands when possible:
+
+```dockerfile
+# Bad - creates 3 layers
+RUN apt-get update
+RUN apt-get install -y curl
+RUN apt-get install -y git
+
+# Good - creates 1 layer
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+### 3. Leverage Build Cache
+Order instructions from least to most frequently changing:
+
+```dockerfile
+# Dependencies change less frequently
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Source code changes more frequently
+COPY . .
+```
+
+### 4. Use .dockerignore
+Create a .dockerignore file to exclude unnecessary files:
+
+```
+__pycache__
+*.pyc
+.git
+.env
+node_modules
+.vscode
+```
+
+### 5. Multi-Stage Builds
+Use multi-stage builds to reduce final image size:
+
+```dockerfile
+# Build stage
+FROM node:18 AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+### 6. Don't Run as Root
+Create a non-root user for better security:
+
+```dockerfile
+FROM python:3.11-slim
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+CMD ["python", "app.py"]
+```
+
+## Real-World Example
+
+```dockerfile
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY . .
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
+```'''
+    },
+    {
+        'title': 'Docker Compose for Multi-Container Applications',
+        'url': 'https://docs.docker.com/compose/',
+        'content': '''# Docker Compose
+
+Docker Compose is a tool for defining and running multi-container Docker applications. With Compose, you use a YAML file to configure your application's services, networks, and volumes.
+
+## Installation
+
+Docker Compose comes pre-installed with Docker Desktop. For Linux, install separately:
+
+```bash
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+## Basic docker-compose.yml
+
+```yaml
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/myapp
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=myapp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+## Common Commands
+
+```bash
+# Start services in detached mode
+docker-compose up -d
+
+# View running services
+docker-compose ps
+
+# View logs
+docker-compose logs
+docker-compose logs -f web
+
+# Stop services
+docker-compose stop
+
+# Stop and remove containers, networks
+docker-compose down
+
+# Stop and remove containers, networks, volumes
+docker-compose down -v
+
+# Rebuild images
+docker-compose build
+
+# Rebuild and start
+docker-compose up -d --build
+```
+
+## Complete Example: Flask App with PostgreSQL and Redis
+
+```yaml
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn --bind 0.0.0.0:8000 app:app
+    volumes:
+      - ./app:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@db:5432/flaskapp
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=flaskapp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    driver: bridge
+```
+
+## Environment Variables
+
+Create a `.env` file for sensitive data:
+
+```env
+POSTGRES_PASSWORD=supersecret
+DATABASE_URL=postgresql://postgres:supersecret@db:5432/myapp
+REDIS_URL=redis://redis:6379/0
+```
+
+Reference in docker-compose.yml:
+
+```yaml
+services:
+  web:
+    env_file:
+      - .env
+```
+
+## Health Checks
+
+Add health checks to ensure services are ready:
+
+```yaml
+services:
+  db:
+    image: postgres:15
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    depends_on:
+      db:
+        condition: service_healthy
+```'''
+    }
+]
+
+SAMPLE_AWS_LAMBDA_DOCS = [
+    {
+        'title': 'AWS Lambda Getting Started',
+        'url': 'https://docs.aws.amazon.com/lambda/latest/dg/getting-started.html',
+        'content': '''# Getting Started with AWS Lambda
+
+AWS Lambda is a serverless compute service that runs your code in response to events and automatically manages the underlying compute resources for you.
+
+## What is AWS Lambda?
+
+AWS Lambda is a serverless, event-driven compute service that lets you run code for virtually any type of application or backend service without provisioning or managing servers.
+
+### Key Features
+- No servers to manage
+- Automatic scaling
+- Pay only for compute time
+- Built-in fault tolerance
+- Supports multiple programming languages
+
+### Supported Runtimes
+- Python 3.7, 3.8, 3.9, 3.10, 3.11, 3.12
+- Node.js 16.x, 18.x, 20.x
+- Java 8, 11, 17, 21
+- .NET Core 3.1, 6, 7
+- Go 1.x
+- Ruby 2.7, 3.2
+- Custom runtime (using Runtime API)
+
+## Your First Lambda Function
+
+### Python Example
+
+```python
+import json
+
+def lambda_handler(event, context):
+    # Get data from event
+    name = event.get('name', 'World')
+
+    # Create response
+    response = {
+        'statusCode': 200,
+        'body': json.dumps({
+            'message': f'Hello, {name}!'
+        })
+    }
+
+    return response
+```
+
+### Node.js Example
+
+```javascript
+exports.handler = async (event) => {
+    const name = event.name || 'World';
+
+    const response = {
+        statusCode: 200,
+        body: JSON.stringify({
+            message: `Hello, ${name}!`
+        })
+    };
+
+    return response;
+};
+```
+
+## Lambda Function Components
+
+### Event Object
+The event object contains information from the invoking service. Structure varies by event source:
+
+```python
+# API Gateway event example
+{
+    "httpMethod": "POST",
+    "path": "/users",
+    "headers": {
+        "Content-Type": "application/json"
+    },
+    "body": "{\"name\": \"John\"}"
+}
+```
+
+### Context Object
+The context object provides runtime information:
+
+```python
+def lambda_handler(event, context):
+    print(f"Request ID: {context.request_id}")
+    print(f"Function name: {context.function_name}")
+    print(f"Memory limit: {context.memory_limit_in_mb} MB")
+    print(f"Time remaining: {context.get_remaining_time_in_millis()} ms")
+
+    return {'statusCode': 200}
+```
+
+## Creating a Lambda Function
+
+### Using AWS Console
+1. Open AWS Lambda console
+2. Click "Create function"
+3. Choose "Author from scratch"
+4. Configure basic settings:
+   - Function name
+   - Runtime (e.g., Python 3.11)
+   - Architecture (x86_64 or arm64)
+5. Click "Create function"
+6. Add your code in the code editor
+7. Click "Deploy"
+
+### Using AWS CLI
+
+```bash
+# Create a deployment package
+zip function.zip lambda_function.py
+
+# Create the function
+aws lambda create-function \
+    --function-name my-function \
+    --runtime python3.11 \
+    --role arn:aws:iam::123456789012:role/lambda-role \
+    --handler lambda_function.lambda_handler \
+    --zip-file fileb://function.zip
+
+# Invoke the function
+aws lambda invoke \
+    --function-name my-function \
+    --payload '{"name": "Alice"}' \
+    response.json
+```
+
+## Environment Variables
+
+Set environment variables for configuration:
+
+```python
+import os
+
+def lambda_handler(event, context):
+    db_host = os.environ.get('DB_HOST')
+    db_name = os.environ.get('DB_NAME')
+
+    print(f"Connecting to {db_name} at {db_host}")
+
+    return {'statusCode': 200}
+```
+
+Configure via AWS Console or CLI:
+
+```bash
+aws lambda update-function-configuration \
+    --function-name my-function \
+    --environment Variables={DB_HOST=mydb.example.com,DB_NAME=production}
+```'''
+    },
+    {
+        'title': 'AWS Lambda with API Gateway',
+        'url': 'https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html',
+        'content': '''# Using AWS Lambda with Amazon API Gateway
+
+You can create a web API with an HTTP endpoint for your Lambda function by using Amazon API Gateway. API Gateway provides features like authentication, request/response transformation, and more.
+
+## REST API Example
+
+### Lambda Function for REST API
+
+```python
+import json
+
+def lambda_handler(event, context):
+    # Get HTTP method
+    http_method = event['httpMethod']
+
+    # Get path parameters
+    path_params = event.get('pathParameters', {})
+
+    # Get query parameters
+    query_params = event.get('queryStringParameters', {})
+
+    # Get request body
+    body = json.loads(event.get('body', '{}'))
+
+    # Route based on HTTP method
+    if http_method == 'GET':
+        return get_user(path_params.get('id'))
+    elif http_method == 'POST':
+        return create_user(body)
+    elif http_method == 'PUT':
+        return update_user(path_params.get('id'), body)
+    elif http_method == 'DELETE':
+        return delete_user(path_params.get('id'))
+    else:
+        return {
+            'statusCode': 405,
+            'body': json.dumps({'error': 'Method not allowed'})
+        }
+
+def get_user(user_id):
+    # Database lookup logic here
+    user = {
+        'id': user_id,
+        'name': 'John Doe',
+        'email': 'john@example.com'
+    }
+
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        },
+        'body': json.dumps(user)
+    }
+
+def create_user(user_data):
+    # Create user in database
+    return {
+        'statusCode': 201,
+        'headers': {
+            'Content-Type': 'application/json'
+        },
+        'body': json.dumps({
+            'message': 'User created successfully',
+            'user': user_data
+        })
+    }
+```
+
+## HTTP API Example (Lambda Proxy Integration)
+
+```python
+import json
+
+def lambda_handler(event, context):
+    # HTTP API event structure
+    route_key = event.get('routeKey')  # e.g., "GET /users/{id}"
+    path_params = event.get('pathParameters', {})
+
+    # Get request context
+    request_context = event.get('requestContext', {})
+    http = request_context.get('http', {})
+
+    method = http.get('method')
+    path = http.get('path')
+
+    print(f"Processing {method} request to {path}")
+
+    # Process request
+    if route_key == 'GET /users/{id}':
+        user_id = path_params.get('id')
+        response_body = {
+            'id': user_id,
+            'name': 'Jane Smith'
+        }
+
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps(response_body)
+        }
+
+    return {
+        'statusCode': 404,
+        'body': json.dumps({'error': 'Not found'})
+    }
+```
+
+## CORS Configuration
+
+Enable CORS in your Lambda response:
+
+```python
+def lambda_handler(event, context):
+    # Process request
+    result = {'message': 'Success'}
+
+    # Return response with CORS headers
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+        },
+        'body': json.dumps(result)
+    }
+```
+
+## Request/Response Examples
+
+### API Gateway REST API Event
+
+```json
+{
+    "resource": "/users/{id}",
+    "path": "/users/123",
+    "httpMethod": "GET",
+    "headers": {
+        "Accept": "application/json",
+        "CloudFront-Viewer-Country": "US"
+    },
+    "pathParameters": {
+        "id": "123"
+    },
+    "queryStringParameters": {
+        "include": "profile"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}
+```
+
+### Lambda Response Format
+
+```json
+{
+    "statusCode": 200,
+    "headers": {
+        "Content-Type": "application/json",
+        "X-Custom-Header": "value"
+    },
+    "body": "{\"message\": \"Success\"}",
+    "isBase64Encoded": false
+}
+```
+
+## Error Handling
+
+```python
+import json
+import traceback
+
+def lambda_handler(event, context):
+    try:
+        # Your business logic
+        result = process_request(event)
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps(result)
+        }
+
+    except ValueError as e:
+        # Client error
+        return {
+            'statusCode': 400,
+            'body': json.dumps({
+                'error': 'Bad Request',
+                'message': str(e)
+            })
+        }
+
+    except Exception as e:
+        # Server error
+        print(f"Error: {str(e)}")
+        print(traceback.format_exc())
+
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': 'Internal Server Error',
+                'message': 'An unexpected error occurred'
+            })
+        }
+```'''
+    },
+    {
+        'title': 'AWS Lambda Best Practices',
+        'url': 'https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html',
+        'content': '''# AWS Lambda Best Practices
+
+Follow these best practices to make the most effective use of AWS Lambda.
+
+## Function Code
+
+### Separate Business Logic from Handler
+
+```python
+# Good practice - testable business logic
+def calculate_discount(price, customer_tier):
+    discounts = {
+        'gold': 0.20,
+        'silver': 0.10,
+        'bronze': 0.05
+    }
+
+    discount = discounts.get(customer_tier, 0)
+    return price * (1 - discount)
+
+def lambda_handler(event, context):
+    # Handler only does I/O and coordination
+    price = float(event['price'])
+    tier = event['customer_tier']
+
+    final_price = calculate_discount(price, tier)
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'final_price': final_price})
+    }
+```
+
+### Minimize Cold Start Impact
+
+```python
+import boto3
+import os
+
+# Initialize outside handler (runs once per container)
+s3_client = boto3.client('s3')
+db_connection = create_db_connection()
+
+BUCKET_NAME = os.environ.get('BUCKET_NAME')
+
+def lambda_handler(event, context):
+    # Use pre-initialized resources
+    data = s3_client.get_object(Bucket=BUCKET_NAME, Key='data.json')
+    result = db_connection.query('SELECT * FROM users')
+
+    return {'statusCode': 200}
+```
+
+## Performance Optimization
+
+### Use Environment Variables
+
+```python
+import os
+
+# Load once at module level
+DB_HOST = os.environ.get('DB_HOST')
+DB_NAME = os.environ.get('DB_NAME')
+API_KEY = os.environ.get('API_KEY')
+
+def lambda_handler(event, context):
+    # Use pre-loaded variables
+    connect_to_database(DB_HOST, DB_NAME, API_KEY)
+```
+
+### Right-Size Your Function
+
+- Start with 128 MB memory
+- Monitor CloudWatch metrics
+- Increase memory if CPU-bound (memory and CPU scale together)
+- Use AWS Lambda Power Tuning tool
+
+```python
+# Check execution metrics
+def lambda_handler(event, context):
+    import time
+    start_time = time.time()
+
+    # Your code here
+    process_data(event)
+
+    duration = time.time() - start_time
+    print(f"Execution time: {duration:.2f}s")
+    print(f"Memory used: {context.memory_limit_in_mb}MB")
+```
+
+### Enable X-Ray Tracing
+
+```python
+from aws_xray_sdk.core import xray_recorder
+from aws_xray_sdk.core import patch_all
+
+# Patch libraries
+patch_all()
+
+def lambda_handler(event, context):
+    # Create subsegments for tracking
+    with xray_recorder.capture('data_processing'):
+        result = process_data(event)
+
+    with xray_recorder.capture('database_query'):
+        save_to_database(result)
+
+    return {'statusCode': 200}
+```
+
+## Error Handling
+
+### Implement Retry Logic
+
+```python
+import time
+from botocore.exceptions import ClientError
+
+def lambda_handler(event, context):
+    max_retries = 3
+    retry_delay = 1
+
+    for attempt in range(max_retries):
+        try:
+            result = call_external_api(event)
+            return {
+                'statusCode': 200,
+                'body': json.dumps(result)
+            }
+        except ClientError as e:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay * (2 ** attempt))  # Exponential backoff
+                continue
+            else:
+                # Final attempt failed
+                raise
+```
+
+### Use Dead Letter Queues
+
+Configure DLQ for failed async invocations:
+
+```bash
+aws lambda update-function-configuration \
+    --function-name my-function \
+    --dead-letter-config TargetArn=arn:aws:sqs:us-east-1:123456789012:my-dlq
+```
+
+## Security
+
+### Use IAM Roles with Least Privilege
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Resource": "arn:aws:s3:::my-bucket/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem"
+            ],
+            "Resource": "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable"
+        }
+    ]
+}
+```
+
+### Store Secrets in AWS Secrets Manager
+
+```python
+import boto3
+import json
+
+secrets_client = boto3.client('secretsmanager')
+
+def get_secret(secret_name):
+    try:
+        response = secrets_client.get_secret_value(SecretId=secret_name)
+        return json.loads(response['SecretString'])
+    except Exception as e:
+        print(f"Error retrieving secret: {e}")
+        raise
+
+def lambda_handler(event, context):
+    # Retrieve database credentials
+    db_credentials = get_secret('prod/db/credentials')
+
+    username = db_credentials['username']
+    password = db_credentials['password']
+
+    # Use credentials to connect
+    connect_to_database(username, password)
+```
+
+## Monitoring and Logging
+
+### Structured Logging
+
+```python
+import json
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def lambda_handler(event, context):
+    # Structured log entries
+    logger.info(json.dumps({
+        'event': 'user_signup',
+        'user_id': event.get('user_id'),
+        'request_id': context.request_id,
+        'timestamp': context.get_remaining_time_in_millis()
+    }))
+
+    try:
+        result = process_signup(event)
+        logger.info(json.dumps({
+            'event': 'signup_success',
+            'user_id': event.get('user_id')
+        }))
+        return result
+    except Exception as e:
+        logger.error(json.dumps({
+            'event': 'signup_error',
+            'error': str(e),
+            'user_id': event.get('user_id')
+        }))
+        raise
+```
+
+## Cost Optimization
+
+### Use Lambda Power Tuning
+- Test different memory configurations
+- Find optimal price/performance ratio
+
+### Set Appropriate Timeouts
+```python
+# Don't use default 3 seconds for everything
+# Set realistic timeouts based on function needs
+
+# In configuration:
+# Quick API calls: 10 seconds
+# Data processing: 60-300 seconds
+# Maximum: 900 seconds (15 minutes)
+```
+
+### Use Reserved Concurrency Carefully
+Only set reserved concurrency when necessary to limit costs or prevent downstream overload.'''
+    }
+]

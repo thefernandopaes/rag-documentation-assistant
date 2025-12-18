@@ -70,7 +70,7 @@ class Config:
         }
     }
     
-    # Legacy documentation sources (kept for backward compatibility)
+    # Documentation sources (expanded for technical documentation platform)
     DOC_SOURCES = {
         "react": {
             "base_url": "https://react.dev/",
@@ -86,6 +86,16 @@ class Config:
             "base_url": "https://fastapi.tiangolo.com/",
             "docs_url": "https://fastapi.tiangolo.com/tutorial/",
             "type": "fastapi"
+        },
+        "docker": {
+            "base_url": "https://docs.docker.com/",
+            "docs_url": "https://docs.docker.com/get-started/",
+            "type": "docker"
+        },
+        "aws_lambda": {
+            "base_url": "https://docs.aws.amazon.com/lambda/",
+            "docs_url": "https://docs.aws.amazon.com/lambda/latest/dg/getting-started.html",
+            "type": "aws_lambda"
         }
     }
     

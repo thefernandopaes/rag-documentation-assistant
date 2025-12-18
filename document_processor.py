@@ -9,7 +9,7 @@ import trafilatura
 import yaml
 from urllib.parse import urljoin, urlparse
 from config import Config
-from data.sample_docs import SAMPLE_REACT_DOCS, SAMPLE_PYTHON_DOCS, SAMPLE_FASTAPI_DOCS
+from data.sample_docs import SAMPLE_REACT_DOCS, SAMPLE_PYTHON_DOCS, SAMPLE_FASTAPI_DOCS, SAMPLE_DOCKER_DOCS, SAMPLE_AWS_LAMBDA_DOCS
 from api_discovery import APIDiscoveryEngine, APIDocSource
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,10 @@ class DocumentProcessor:
                 return self._process_python_docs(source_config)
             if source_config['type'] == 'fastapi':
                 return self._process_fastapi_docs(source_config)
+            if source_config['type'] == 'docker':
+                return self._process_docker_docs(source_config)
+            if source_config['type'] == 'aws_lambda':
+                return self._process_aws_lambda_docs(source_config)
             return []
 
         # Real crawling path
@@ -199,7 +203,7 @@ class DocumentProcessor:
     def _process_fastapi_docs(self, config: Dict[str, str]) -> List[Dict[str, Any]]:
         """Process FastAPI documentation"""
         logger.info("Processing FastAPI documentation using sample data")
-        
+
         documents = []
         for doc_data in SAMPLE_FASTAPI_DOCS:
             processed_doc = {
@@ -211,7 +215,43 @@ class DocumentProcessor:
                 'processed_at': time.time()
             }
             documents.append(processed_doc)
-        
+
+        return documents
+
+    def _process_docker_docs(self, config: Dict[str, str]) -> List[Dict[str, Any]]:
+        """Process Docker documentation"""
+        logger.info("Processing Docker documentation using sample data")
+
+        documents = []
+        for doc_data in SAMPLE_DOCKER_DOCS:
+            processed_doc = {
+                'title': doc_data['title'],
+                'source_url': doc_data['url'],
+                'content': self._clean_content(doc_data['content']),
+                'doc_type': 'docker',
+                'version': 'latest',
+                'processed_at': time.time()
+            }
+            documents.append(processed_doc)
+
+        return documents
+
+    def _process_aws_lambda_docs(self, config: Dict[str, str]) -> List[Dict[str, Any]]:
+        """Process AWS Lambda documentation"""
+        logger.info("Processing AWS Lambda documentation using sample data")
+
+        documents = []
+        for doc_data in SAMPLE_AWS_LAMBDA_DOCS:
+            processed_doc = {
+                'title': doc_data['title'],
+                'source_url': doc_data['url'],
+                'content': self._clean_content(doc_data['content']),
+                'doc_type': 'aws_lambda',
+                'version': 'latest',
+                'processed_at': time.time()
+            }
+            documents.append(processed_doc)
+
         return documents
     
     def _clean_content(self, content: str) -> str:
