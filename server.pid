@@ -1,1 +1,0 @@
- sleep 6 echo Server restarted. Testing homepage... curl -s http://localhost:8000/

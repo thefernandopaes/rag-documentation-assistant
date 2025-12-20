@@ -67,6 +67,8 @@ htmlcov/
 *.tmp
 *.bak
 *.orig
+*.pid
+server.pid
 
 # Pip installation artifacts (version files)
 =*
