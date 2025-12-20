@@ -4,6 +4,10 @@
 # Let Nixpacks auto-detect Python and dependencies from pyproject.toml
 # We only override the start command to use Uvicorn instead of Gunicorn
 
+[phases.build]
+# Remove the "pip install ." command that's causing the error
+cmds = []
+
 [start]
 # Use Uvicorn for FastAPI (NOT Gunicorn)
 cmd = "uvicorn fastapi_app:app --host 0.0.0.0 --port $PORT --workers ${WEB_CONCURRENCY:-4} --timeout-keep-alive 5 --proxy-headers --forwarded-allow-ips '*' --limit-concurrency 1000"
