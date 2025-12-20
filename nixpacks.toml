@@ -8,7 +8,7 @@ nixPkgs = ["python311"]
 cmds = [
     "pip install --upgrade pip",
     "pip install uv",
-    "uv pip install --system -r requirements.txt || pip install -r pyproject.toml"
+    "uv pip install --system . || pip install ."
 ]
 
 [start]
