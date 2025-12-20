@@ -58,7 +58,7 @@ def test_worker_calculation():
     print("=" * 60)
 
     try:
-        from uvicorn_config import get_workers
+        from server.uvicorn import get_workers
 
         # Clear env var for testing
         original = os.environ.get("WEB_CONCURRENCY")
@@ -108,7 +108,7 @@ def test_environment_variables():
     print("=" * 60)
 
     try:
-        from uvicorn_config import get_host, get_port, get_log_level
+        from server.uvicorn import get_host, get_port, get_log_level
 
         # Test defaults
         host = get_host()
@@ -163,7 +163,7 @@ def test_config_dictionary():
     print("=" * 60)
 
     try:
-        from uvicorn_config import get_config
+        from server.uvicorn import get_config
 
         config = get_config()
 

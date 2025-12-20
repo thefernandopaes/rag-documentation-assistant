@@ -22,7 +22,7 @@ async def test_database_connection():
     print("=" * 60)
 
     try:
-        from database_async import check_db_connection, get_async_database_uri
+        from app.db.database import check_db_connection, get_async_database_uri
 
         uri = get_async_database_uri()
         print(f"[INFO] Database URI: {uri[:50]}...")
@@ -48,7 +48,7 @@ async def test_async_models():
     print("=" * 60)
 
     try:
-        from models_async import Conversation, DocumentChunk, RateLimit, Base
+        from app.db.models import Conversation, DocumentChunk, RateLimit, Base
 
         models = [
             ("Conversation", Conversation),
@@ -80,8 +80,8 @@ async def test_crud_operations():
     print("=" * 60)
 
     try:
-        from database_async import AsyncSessionLocal, init_async_db
-        from models_async import Conversation, DocumentChunk, RateLimit
+        from app.db.database import AsyncSessionLocal, init_async_db
+        from app.db.models import Conversation, DocumentChunk, RateLimit
         import uuid
 
         # Initialize database (create tables if needed)
@@ -160,7 +160,7 @@ async def test_session_management():
     print("=" * 60)
 
     try:
-        from database_async import get_async_db
+        from app.db.database import get_async_db
 
         # Test async generator
         async for session in get_async_db():
@@ -175,7 +175,7 @@ async def test_session_management():
                 return False
 
             # Test query
-            from models_async import Conversation
+            from app.db.models import Conversation
             result = await session.execute(select(Conversation).limit(1))
             print("[PASS] Query executed successfully")
 
@@ -195,7 +195,7 @@ async def test_alembic_compatibility():
     print("=" * 60)
 
     try:
-        from models_async import Conversation, DocumentChunk, RateLimit
+        from app.db.models import Conversation, DocumentChunk, RateLimit
 
         # Expected table names (from sync models)
         expected_tables = {
@@ -267,7 +267,7 @@ async def main():
 
     # Cleanup
     try:
-        from database_async import dispose_async_db
+        from app.db.database import dispose_async_db
         await dispose_async_db()
         print("\n[INFO] Database connections closed")
     except Exception as e:

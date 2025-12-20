@@ -7,7 +7,7 @@ Tests:
 3. Security validators (XSS, SQL injection, spam)
 """
 
-from schemas import ChatRequest, ChatResponse, FeedbackRequest, InitializeRequest
+from app.api.schemas import ChatRequest, ChatResponse, FeedbackRequest, InitializeRequest
 from pydantic import ValidationError
 import sys
 

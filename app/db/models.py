@@ -14,7 +14,7 @@ from datetime import datetime
 import uuid
 from sqlalchemy import String, Text, Float, DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column
-from database_async import Base
+from app.db.database import Base
 
 
 class Conversation(Base):

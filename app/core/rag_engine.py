@@ -21,8 +21,8 @@ from chromadb.config import Settings
 from openai import AsyncOpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import Config
-from cache_manager_inmemory import AsyncInMemoryCache
-from code_generator import CodeExampleGenerator
+from app.core.cache import AsyncInMemoryCache
+from app.core.code_generator import CodeExampleGenerator
 from hashlib import sha256
 
 logger = logging.getLogger(__name__)

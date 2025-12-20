@@ -16,7 +16,7 @@ Environment Variables:
 import os
 import sys
 import uvicorn
-from uvicorn_config import get_config, print_config
+from server.uvicorn import get_config, print_config
 
 # Set production environment
 os.environ.setdefault("ENVIRONMENT", "production")

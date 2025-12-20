@@ -148,7 +148,7 @@ async def init_async_db():
     """
     async with async_engine.begin() as conn:
         # Import models to register them with Base
-        from models_async import Conversation, DocumentChunk, RateLimit
+        from app.db.models import Conversation, DocumentChunk, RateLimit
 
         # Create tables (idempotent - won't recreate existing tables)
         await conn.run_sync(Base.metadata.create_all)

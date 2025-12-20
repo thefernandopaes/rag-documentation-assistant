@@ -361,7 +361,7 @@ class TestEvaluationIntegration:
     )
     async def test_full_evaluation(self):
         """Test complete evaluation flow"""
-        from rag_engine_async import AsyncRAGEngine
+        from app.core.rag_engine import AsyncRAGEngine
 
         engine = AsyncRAGEngine()
         evaluator = RAGEvaluator()
@@ -382,7 +382,7 @@ class TestEvaluationIntegration:
     )
     async def test_full_benchmark(self):
         """Test complete benchmark"""
-        from rag_engine_async import AsyncRAGEngine
+        from app.core.rag_engine import AsyncRAGEngine
 
         engine = AsyncRAGEngine()
         benchmark = RAGBenchmark(engine)

@@ -21,7 +21,7 @@ async def test_async_openai_client():
     print("=" * 60)
 
     try:
-        from rag_engine_async import AsyncRAGEngine
+        from app.core.rag_engine import AsyncRAGEngine
 
         engine = AsyncRAGEngine()
         print("[PASS] AsyncRAGEngine initialized")
@@ -41,7 +41,7 @@ async def test_async_embedding():
     print("=" * 60)
 
     try:
-        from rag_engine_async import AsyncRAGEngine
+        from app.core.rag_engine import AsyncRAGEngine
 
         engine = AsyncRAGEngine()
         test_text = "How do I use the FastAPI async features?"
@@ -74,7 +74,7 @@ async def test_async_search():
     print("=" * 60)
 
     try:
-        from rag_engine_async import AsyncRAGEngine
+        from app.core.rag_engine import AsyncRAGEngine
 
         engine = AsyncRAGEngine()
 
@@ -122,7 +122,7 @@ async def test_async_response():
     print("=" * 60)
 
     try:
-        from rag_engine_async import AsyncRAGEngine
+        from app.core.rag_engine import AsyncRAGEngine
 
         engine = AsyncRAGEngine()
 
@@ -214,7 +214,7 @@ async def test_performance_comparison():
     print("=" * 60)
 
     try:
-        from rag_engine_async import AsyncRAGEngine
+        from app.core.rag_engine import AsyncRAGEngine
 
         async_engine = AsyncRAGEngine()
 

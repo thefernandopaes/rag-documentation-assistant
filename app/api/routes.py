@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from hashlib import sha256
 
-from schemas import (
+from app.api.schemas import (
     ChatRequest,
     ChatResponse,
     FeedbackRequest,
@@ -32,9 +32,9 @@ from schemas import (
     InitializeRequest,
     InitializeResponse
 )
-from models_async import Conversation, DocumentChunk
-from database_async import get_async_db
-from dependencies import (
+from app.db.models import Conversation, DocumentChunk
+from app.db.database import get_async_db
+from app.api.dependencies import (
     validate_rate_limit,
     validate_query_security,
     validate_admin_key,
@@ -43,7 +43,7 @@ from dependencies import (
     validate_conversation_exists
 )
 from config import Config
-from document_processor import DocumentProcessor
+from app.services.document_processor import AsyncDocumentProcessor as DocumentProcessor
 
 logger = logging.getLogger(__name__)
 

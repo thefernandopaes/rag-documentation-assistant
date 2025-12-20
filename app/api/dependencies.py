@@ -17,8 +17,8 @@ from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from database_async import get_async_db
-from models_async import RateLimit
+from app.db.database import get_async_db
+from app.db.models import RateLimit
 from config import Config
 from utils.validators import validate_query, ValidationError
 
@@ -241,7 +241,7 @@ async def validate_conversation_exists(
 
     Returns True if exists, raises HTTPException if not found.
     """
-    from models_async import Conversation
+    from app.db.models import Conversation
 
     try:
         result = await db.execute(

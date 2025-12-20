@@ -70,7 +70,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     Scope: function (new session per test)
     Creates in-memory SQLite database for testing.
     """
-    from database_async import get_async_database_uri
+    from app.db.database import get_async_database_uri
 
     # Use in-memory SQLite for tests
     test_db_uri = "sqlite+aiosqlite:///:memory:"
@@ -82,7 +82,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     )
 
     # Create tables
-    from models_async import Base
+    from app.db.models import Base
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -107,7 +107,7 @@ def rag_engine():
 
     Scope: module (expensive to initialize)
     """
-    from rag_engine_async import AsyncRAGEngine
+    from app.core.rag_engine import AsyncRAGEngine
     return AsyncRAGEngine()
 
 

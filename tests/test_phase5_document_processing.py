@@ -21,7 +21,7 @@ def test_async_processor_initialization():
     print("=" * 60)
 
     try:
-        from document_processor_async import AsyncDocumentProcessor
+        from app.services.document_processor import AsyncDocumentProcessor
 
         processor = AsyncDocumentProcessor(max_concurrent=5)
         print("[PASS] AsyncDocumentProcessor initialized")
@@ -44,7 +44,7 @@ def test_sample_data_processing():
     print("=" * 60)
 
     try:
-        from document_processor_async import AsyncDocumentProcessor
+        from app.services.document_processor import AsyncDocumentProcessor
         from config import Config
 
         # Ensure sample mode is enabled
@@ -95,7 +95,7 @@ def test_concurrent_processing():
     print("=" * 60)
 
     try:
-        from document_processor_async import AsyncDocumentProcessor
+        from app.services.document_processor import AsyncDocumentProcessor
         from config import Config
 
         Config.DOC_USE_SAMPLE = True
@@ -129,7 +129,7 @@ def test_performance_comparison():
     print("=" * 60)
 
     try:
-        from document_processor_async import AsyncDocumentProcessor
+        from app.services.document_processor import AsyncDocumentProcessor
         from config import Config
 
         Config.DOC_USE_SAMPLE = True
@@ -185,7 +185,7 @@ def test_rate_limiting():
     print("=" * 60)
 
     try:
-        from document_processor_async import AsyncDocumentProcessor
+        from app.services.document_processor import AsyncDocumentProcessor
 
         # Create processor with low concurrency limit
         processor = AsyncDocumentProcessor(max_concurrent=2)
@@ -215,7 +215,7 @@ def test_httpx_client():
 
     try:
         import httpx
-        from document_processor_async import AsyncDocumentProcessor
+        from app.services.document_processor import AsyncDocumentProcessor
 
         processor = AsyncDocumentProcessor()
 
@@ -244,7 +244,7 @@ def test_async_patterns():
     print("=" * 60)
 
     try:
-        from document_processor_async import AsyncDocumentProcessor
+        from app.services.document_processor import AsyncDocumentProcessor
         import inspect
 
         processor = AsyncDocumentProcessor()
