@@ -2,4 +2,4 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "uvicorn fastapi_app:app --host 0.0.0.0 --port $PORT --workers ${WEB_CONCURRENCY:-4}"
+startCommand = "/opt/venv/bin/uvicorn fastapi_app:app --host 0.0.0.0 --port $PORT --workers ${WEB_CONCURRENCY:-4} --timeout-keep-alive 5 --proxy-headers --forwarded-allow-ips '*' --limit-concurrency 1000"
