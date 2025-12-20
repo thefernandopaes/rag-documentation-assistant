@@ -1,0 +1,74 @@
+{
+  "test_cases": [
+    {
+      "question": "How do I create a FastAPI endpoint?",
+      "ground_truth": "Use the @app decorator with an HTTP method (get, post, etc.) and define an async function. Example: @app.get('/items') async def read_items(): return {'items': []}",
+      "contexts": [
+        "FastAPI uses Python decorators to define routes. You create endpoints by using @app.get(), @app.post(), etc., followed by an async function definition."
+      ]
+    },
+    {
+      "question": "What is async/await in Python?",
+      "ground_truth": "async/await is Python's syntax for asynchronous programming, allowing non-blocking I/O operations. Use 'async def' to define coroutines and 'await' to call them.",
+      "contexts": [
+        "Asynchronous programming allows non-blocking I/O operations. Python's async/await syntax enables writing concurrent code using coroutines."
+      ]
+    },
+    {
+      "question": "How to handle CORS in FastAPI?",
+      "ground_truth": "Use CORSMiddleware from fastapi.middleware.cors. Add it to your app with app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*']).",
+      "contexts": [
+        "CORS (Cross-Origin Resource Sharing) is handled via middleware in FastAPI. The CORSMiddleware allows you to configure which origins can access your API."
+      ]
+    },
+    {
+      "question": "What is Pydantic and why use it with FastAPI?",
+      "ground_truth": "Pydantic is a data validation library using Python type annotations. FastAPI uses it for request/response validation and automatic API documentation generation.",
+      "contexts": [
+        "Pydantic provides data validation and settings management using Python type hints. FastAPI leverages Pydantic models for automatic request validation and OpenAPI schema generation."
+      ]
+    },
+    {
+      "question": "How do I add path parameters in FastAPI?",
+      "ground_truth": "Define path parameters in the route path using curly braces and declare them as function parameters. Example: @app.get('/items/{item_id}') async def read_item(item_id: int).",
+      "contexts": [
+        "Path parameters are declared in the route path using curly braces. FastAPI automatically validates and converts them based on the function parameter type hints."
+      ]
+    },
+    {
+      "question": "What is dependency injection in FastAPI?",
+      "ground_truth": "Dependency injection in FastAPI uses the Depends() function to declare dependencies that are resolved automatically. It's useful for database sessions, authentication, and shared logic.",
+      "contexts": [
+        "FastAPI's dependency injection system uses Depends() to provide reusable components. Dependencies are resolved recursively and can be used for authentication, database sessions, and configuration."
+      ]
+    },
+    {
+      "question": "How to handle file uploads in FastAPI?",
+      "ground_truth": "Use the File() and UploadFile types. Example: @app.post('/upload') async def upload(file: UploadFile = File(...)). UploadFile provides async methods for file handling.",
+      "contexts": [
+        "File uploads are handled using File() and UploadFile from FastAPI. UploadFile is recommended as it stores files in memory up to a limit, then spills to disk, and provides async methods."
+      ]
+    },
+    {
+      "question": "What is the difference between PUT and PATCH in REST APIs?",
+      "ground_truth": "PUT replaces the entire resource with the provided data, while PATCH partially updates specific fields of a resource. PUT is idempotent and requires the complete resource representation.",
+      "contexts": [
+        "PUT and PATCH are both HTTP methods for updates. PUT replaces the entire resource (requires all fields), while PATCH updates only specified fields (partial update)."
+      ]
+    },
+    {
+      "question": "How to add authentication to FastAPI endpoints?",
+      "ground_truth": "Use OAuth2PasswordBearer for token-based auth, or HTTPBearer for generic bearer tokens. Implement as a dependency: async def get_current_user(token: str = Depends(oauth2_scheme)).",
+      "contexts": [
+        "FastAPI supports OAuth2 with Password flow using OAuth2PasswordBearer. Authentication is typically implemented as a dependency that validates tokens and returns the current user."
+      ]
+    },
+    {
+      "question": "What is SQLAlchemy and how to use it with FastAPI?",
+      "ground_truth": "SQLAlchemy is a Python SQL toolkit and ORM. Use it with FastAPI by creating async database sessions and injecting them as dependencies using Depends(get_db).",
+      "contexts": [
+        "SQLAlchemy is an ORM (Object-Relational Mapper) that allows working with databases using Python objects. FastAPI commonly uses SQLAlchemy async mode for database operations."
+      ]
+    }
+  ]
+}

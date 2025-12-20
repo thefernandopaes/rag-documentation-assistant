@@ -10,6 +10,7 @@ import yaml
 from urllib.parse import urljoin, urlparse
 from config import Config
 from data.sample_docs import SAMPLE_REACT_DOCS, SAMPLE_PYTHON_DOCS, SAMPLE_FASTAPI_DOCS, SAMPLE_DOCKER_DOCS, SAMPLE_AWS_LAMBDA_DOCS
+from data.internal_docs import get_all_internal_docs
 from api_discovery import APIDiscoveryEngine, APIDocSource
 
 logger = logging.getLogger(__name__)
@@ -24,9 +25,19 @@ class DocumentProcessor:
         self.api_discovery = APIDiscoveryEngine()
     
     def process_documentation_sources(self) -> List[Dict[str, Any]]:
-        """Process all configured documentation sources"""
+        """Process all configured documentation sources including internal docs"""
         all_documents = []
-        
+
+        # First, add internal documentation about the system itself
+        logger.info("Adding internal documentation...")
+        try:
+            internal_docs = get_all_internal_docs()
+            all_documents.extend(internal_docs)
+            logger.info(f"Added {len(internal_docs)} internal documentation chunks")
+        except Exception as e:
+            logger.error(f"Error adding internal documentation: {e}")
+
+        # Then process external documentation sources
         for source_name, source_config in Config.DOC_SOURCES.items():
             logger.info(f"Processing {source_name} documentation...")
             try:
@@ -35,7 +46,7 @@ class DocumentProcessor:
                 logger.info(f"Processed {len(docs)} documents from {source_name}")
             except Exception as e:
                 logger.error(f"Error processing {source_name}: {e}")
-        
+
         return all_documents
     
     def process_source(self, source_config: Dict[str, str]) -> List[Dict[str, Any]]:

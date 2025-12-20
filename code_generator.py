@@ -620,3 +620,148 @@ response = requests.get("https://api.example.com/endpoint", headers=headers)'''
     def get_supported_languages(self) -> List[str]:
         """Get list of supported programming languages."""
         return self.supported_languages.copy()
+
+    def generate_example(self, specification: str) -> str:
+        """
+        Generate code example from a simple string specification.
+
+        This method parses a natural language specification and generates
+        appropriate code examples. Used by the LangChain code generator tool.
+
+        Args:
+            specification: Natural language description of what code to generate
+                Examples:
+                - "Python FastAPI POST endpoint"
+                - "cURL GET request with authentication"
+                - "JavaScript async function"
+
+        Returns:
+            Generated code as a formatted string
+        """
+        try:
+            spec_lower = specification.lower()
+
+            # Detect language and endpoint information from specification
+            if 'curl' in spec_lower:
+                # Generate cURL example
+                endpoint_info = {
+                    'method': 'POST' if 'post' in spec_lower else 'GET',
+                    'base_url': 'https://api.example.com',
+                    'path': '/endpoint',
+                    'headers': {},
+                    'auth': {'type': 'bearer'} if 'auth' in spec_lower else {}
+                }
+                result = self._generate_curl_example(endpoint_info)
+                return f"```bash\n{result['code']}\n```"
+
+            elif 'fastapi' in spec_lower or ('python' in spec_lower and ('api' in spec_lower or 'endpoint' in spec_lower)):
+                # Generate FastAPI example
+                endpoint_info = {
+                    'method': 'POST' if 'post' in spec_lower else 'GET',
+                    'base_url': 'https://api.example.com',
+                    'path': '/items',
+                    'parameters': [],
+                    'request_body': {'name': 'example', 'value': 123} if 'post' in spec_lower else None,
+                    'headers': {},
+                    'auth': {}
+                }
+
+                # Generate Python FastAPI code
+                if 'post' in spec_lower:
+                    return '''```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class Item(BaseModel):
+    name: str
+    description: str = None
+    price: float
+
+@app.post("/items/")
+async def create_item(item: Item):
+    """Create a new item"""
+    # Process the item
+    return {"item_id": 1, "name": item.name, "price": item.price}
+```'''
+                else:
+                    return '''```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    """Get an item by ID"""
+    return {"item_id": item_id, "name": "Sample Item"}
+```'''
+
+            elif 'python' in spec_lower and 'async' in spec_lower:
+                # Generate Python async example
+                return '''```python
+import asyncio
+
+async def async_function():
+    """Example async function"""
+    await asyncio.sleep(1)
+    return "result"
+
+async def main():
+    """Main async function"""
+    result = await async_function()
+    print(result)
+
+# Run
+asyncio.run(main())
+```'''
+
+            elif 'javascript' in spec_lower or 'node' in spec_lower:
+                # Generate JavaScript example
+                endpoint_info = {
+                    'method': 'POST' if 'post' in spec_lower else 'GET',
+                    'base_url': 'https://api.example.com',
+                    'path': '/endpoint',
+                    'parameters': [],
+                    'request_body': {'name': 'example'} if 'post' in spec_lower else None,
+                    'headers': {},
+                    'auth': {}
+                }
+                result = self._generate_javascript_example(endpoint_info)
+                return f"```javascript\n{result['code']}\n```"
+
+            elif 'python' in spec_lower:
+                # Generate generic Python example
+                endpoint_info = {
+                    'method': 'POST' if 'post' in spec_lower else 'GET',
+                    'base_url': 'https://api.example.com',
+                    'path': '/endpoint',
+                    'parameters': [],
+                    'request_body': {'key': 'value'} if 'post' in spec_lower else None,
+                    'headers': {},
+                    'auth': {}
+                }
+                result = self._generate_python_example(endpoint_info)
+                return f"```python\n{result['code']}\n```"
+
+            else:
+                # Fallback: generate multi-language examples
+                endpoint_info = {
+                    'method': 'GET',
+                    'base_url': 'https://api.example.com',
+                    'path': '/endpoint',
+                    'parameters': [],
+                    'request_body': None,
+                    'headers': {},
+                    'auth': {}
+                }
+                examples = self.generate_multi_language_examples(endpoint_info)
+                if examples:
+                    # Return the first example (usually cURL)
+                    return f"```{examples[0]['language']}\n{examples[0]['code']}\n```"
+                else:
+                    return "```python\n# Example code\nprint('Hello World')\n```"
+
+        except Exception as e:
+            logger.error(f"Error generating example from specification: {e}")
+            return f"```python\n# Error generating code: {str(e)}\n# Specification: {specification}\n```"

@@ -119,21 +119,24 @@ class ChatInterface {
     
     async sendMessage() {
         const query = this.chatInput.value.trim();
-        
+
         if (!query || this.isLoading) {
             return;
         }
-        
+
         // Disable input
         this.setLoading(true);
-        
+
         // Add user message to chat
         this.addMessage('user', query);
-        
+
         // Clear input
         this.chatInput.value = '';
         this.charCount.textContent = '0';
-        
+
+        // Show typing indicator
+        this.showTypingIndicator();
+
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -142,16 +145,19 @@ class ChatInterface {
                 },
                 body: JSON.stringify({ query })
             });
-            
+
+            // Remove typing indicator
+            this.removeTypingIndicator();
+
             if (response.status === 429) {
                 const errorData = await response.json();
                 this.showRateLimitWarning(errorData);
                 this.setLoading(false);
                 return;
             }
-            
+
             const data = await response.json();
-            
+
             if (response.ok) {
                 // Add assistant response with enhanced API fields
                 this.addMessage('assistant', data.response, {
@@ -166,13 +172,13 @@ class ChatInterface {
                     responseTime: data.response_time,
                     cached: data.cached
                 });
-                
+
                 // Update conversation history
                 this.conversationHistory.push({
                     user: query,
                     assistant: data.response
                 });
-                
+
                 // Keep only last 5 exchanges
                 if (this.conversationHistory.length > 5) {
                     this.conversationHistory = this.conversationHistory.slice(-5);
@@ -184,11 +190,12 @@ class ChatInterface {
             }
         } catch (error) {
             console.error('Error sending message:', error);
+            this.removeTypingIndicator();
             this.addMessage('assistant', 'Sorry, I\'m having trouble connecting to the server. Please try again later.', {
                 isError: true
             });
         }
-        
+
         this.setLoading(false);
     }
     
@@ -254,7 +261,33 @@ class ChatInterface {
     }
     
     formatMessage(content) {
-        // Convert markdown-like formatting
+        // Configure marked for better rendering
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                highlight: function(code, lang) {
+                    // Return unprocessed - Prism will handle highlighting
+                    return code;
+                }
+            });
+
+            // Use marked.js for robust markdown rendering
+            try {
+                return marked.parse(content);
+            } catch (error) {
+                console.error('Markdown parsing error:', error);
+                // Fallback to simple rendering
+                return this.formatMessageFallback(content);
+            }
+        }
+
+        // Fallback if marked.js is not loaded
+        return this.formatMessageFallback(content);
+    }
+
+    formatMessageFallback(content) {
+        // Simple markdown-like formatting as fallback
         return content
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -269,22 +302,26 @@ class ChatInterface {
         if (!codeExamples || codeExamples.length === 0) {
             return '';
         }
-        
-        return codeExamples.map(example => {
+
+        return codeExamples.map((example, index) => {
             const language = example.language || 'text';
             const code = this.escapeHtml(example.code);
             const explanation = example.explanation || '';
-            
+            const title = example.title || `${language.toUpperCase()} Example`;
+
             return `
                 <div class="code-block mt-3">
                     <div class="code-header">
-                        <span><i class="fas fa-code me-2"></i>${language.toUpperCase()}</span>
-                        <button class="copy-btn" onclick="copyToClipboard(this)" data-code="${this.escapeHtml(example.code)}">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-code me-2"></i>
+                            <span class="code-title">${title}</span>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard(this)" data-code="${this.escapeHtml(example.code)}" title="Copy to clipboard">
                             <i class="fas fa-copy"></i>
                         </button>
                     </div>
-                    <pre><code class="language-${language}">${code}</code></pre>
-                    ${explanation ? `<div class="mt-2 text-muted small">${this.escapeHtml(explanation)}</div>` : ''}
+                    <pre class="line-numbers"><code class="language-${language}">${code}</code></pre>
+                    ${explanation ? `<div class="code-explanation mt-2 text-muted small"><i class="fas fa-info-circle me-1"></i>${this.escapeHtml(explanation)}</div>` : ''}
                 </div>
             `;
         }).join('');
@@ -542,6 +579,38 @@ class ChatInterface {
     
     scrollToBottom() {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
+
+    showTypingIndicator() {
+        const indicator = document.createElement('div');
+        indicator.id = 'typing-indicator';
+        indicator.className = 'message assistant-message mb-3';
+        indicator.innerHTML = `
+            <div class="d-flex align-items-start">
+                <div class="avatar bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                    <i class="fas fa-robot text-white"></i>
+                </div>
+                <div class="message-content flex-grow-1">
+                    <div class="typing-indicator-bubble bg-dark border p-3 rounded">
+                        <div class="typing-dots">
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                            <span class="typing-dot"></span>
+                        </div>
+                        <small class="text-muted ms-2">AI is thinking...</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.chatMessages.appendChild(indicator);
+        this.scrollToBottom();
+    }
+
+    removeTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
     }
 }
 

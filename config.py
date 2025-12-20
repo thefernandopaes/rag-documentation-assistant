@@ -70,32 +70,37 @@ class Config:
         }
     }
     
-    # Documentation sources (expanded for technical documentation platform)
+    # Documentation sources (curated for professional portfolio)
     DOC_SOURCES = {
-        "react": {
-            "base_url": "https://react.dev/",
-            "docs_url": "https://react.dev/learn",
-            "type": "react"
-        },
-        "python": {
-            "base_url": "https://docs.python.org/3/",
-            "docs_url": "https://docs.python.org/3/tutorial/",
-            "type": "python"
+        "openai": {
+            "base_url": "https://platform.openai.com/",
+            "docs_url": "https://platform.openai.com/docs/introduction",
+            "type": "openai"
         },
         "fastapi": {
             "base_url": "https://fastapi.tiangolo.com/",
             "docs_url": "https://fastapi.tiangolo.com/tutorial/",
             "type": "fastapi"
         },
-        "docker": {
-            "base_url": "https://docs.docker.com/",
-            "docs_url": "https://docs.docker.com/get-started/",
-            "type": "docker"
+        "stripe": {
+            "base_url": "https://stripe.com/docs/",
+            "docs_url": "https://stripe.com/docs/api",
+            "type": "stripe"
         },
-        "aws_lambda": {
-            "base_url": "https://docs.aws.amazon.com/lambda/",
-            "docs_url": "https://docs.aws.amazon.com/lambda/latest/dg/getting-started.html",
-            "type": "aws_lambda"
+        "react": {
+            "base_url": "https://react.dev/",
+            "docs_url": "https://react.dev/learn",
+            "type": "react"
+        },
+        "nextjs": {
+            "base_url": "https://nextjs.org/",
+            "docs_url": "https://nextjs.org/docs",
+            "type": "nextjs"
+        },
+        "github": {
+            "base_url": "https://docs.github.com/",
+            "docs_url": "https://docs.github.com/en/rest",
+            "type": "github"
         }
     }
     

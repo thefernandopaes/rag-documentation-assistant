@@ -6,17 +6,21 @@ Main application factory with:
 - Security middleware (CORS, headers)
 - Global exception handlers
 - Router registration
+- Templates and static files serving
 """
 
 import logging
 from contextlib import asynccontextmanager
 from typing import Dict, Any
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config import Config
@@ -92,6 +96,15 @@ def create_fastapi_app() -> FastAPI:
         lifespan=lifespan
     )
 
+    # Configure templates and static files
+    BASE_DIR = Path(__file__).resolve().parent
+    templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+    app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+    logger.info("Templates and static files configured")
+
+    # Store templates in app state for use in routes
+    app.state.templates = templates
+
     # Register middleware
     _register_middleware(app)
 
@@ -102,6 +115,62 @@ def create_fastapi_app() -> FastAPI:
     from routes_async import router
     app.include_router(router)
     logger.info("Async routes registered")
+
+    # Frontend routes - HTML pages
+    @app.get("/", tags=["Frontend"], include_in_schema=False)
+    async def index(request: Request):
+        """
+        Home page - Landing page with features and documentation info.
+        """
+        return app.state.templates.TemplateResponse(
+            "index.html",
+            {"request": request}
+        )
+
+    @app.get("/chat", tags=["Frontend"], include_in_schema=False)
+    async def chat_page(request: Request):
+        """
+        Chat interface - Interactive chat page with AI assistant.
+        """
+        import uuid
+        session_id = str(uuid.uuid4())
+        return app.state.templates.TemplateResponse(
+            "chat.html",
+            {"request": request, "session_id": session_id}
+        )
+
+    # API info endpoint for programmatic access
+    @app.get("/api", tags=["Info"])
+    async def api_info():
+        """
+        API information endpoint - Quick reference for available endpoints.
+        """
+        return {
+            "name": "RAG Documentation Assistant API",
+            "version": "2.0.0",
+            "framework": "FastAPI",
+            "async": True,
+            "status": "operational",
+            "description": "Async RAG system for API documentation queries with code generation",
+            "endpoints": {
+                "chat": "POST /api/chat - Generate AI responses",
+                "stats": "GET /api/stats - System statistics",
+                "history": "GET /api/history - Conversation history",
+                "feedback": "POST /api/feedback - Submit feedback",
+                "health": "GET /health - Health check"
+            },
+            "documentation": {
+                "swagger": "/docs - Interactive API documentation",
+                "redoc": "/redoc - Alternative API documentation",
+                "openapi": "/openapi.json - OpenAPI specification"
+            },
+            "quick_start": [
+                "1. Visit / for the web interface",
+                "2. Visit /chat for the chat interface",
+                "3. Visit /docs for API documentation",
+                "4. POST to /api/chat with JSON: {\"query\": \"your question\"}"
+            ]
+        }
 
     logger.info("FastAPI application created successfully")
 
@@ -167,13 +236,23 @@ def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         """Handle Pydantic validation errors."""
-        logger.warning(f"Validation error: {exc.errors()}")
+        errors = exc.errors()
+        logger.warning(f"Validation error: {errors}")
+
+        # Convert errors to JSON-serializable format
+        serializable_errors = []
+        for error in errors:
+            serializable_errors.append({
+                "loc": list(error.get("loc", [])),
+                "msg": str(error.get("msg", "")),
+                "type": str(error.get("type", ""))
+            })
 
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "error": "Validation error",
-                "details": exc.errors(),
+                "details": serializable_errors,
                 "path": str(request.url)
             }
         )
@@ -220,6 +299,9 @@ async def health_check() -> Dict[str, Any]:
         "async": True
     }
 
+
+# Create app instance at module level for uvicorn
+app = create_fastapi_app()
 
 if __name__ == "__main__":
     import uvicorn

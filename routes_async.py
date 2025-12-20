@@ -51,6 +51,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["API"])
 
 
+@router.get("/health")
+async def health_check():
+    """
+    Health check endpoint.
+
+    Returns system health status and version information.
+    """
+    return {
+        "status": "healthy",
+        "version": "2.0.0",
+        "framework": "fastapi",
+        "async": True
+    }
+
+
 @router.post("/api/chat", response_model=ChatResponse)
 async def api_chat(
     request: ChatRequest,
@@ -308,6 +323,97 @@ async def api_stats(
             cache={'total_entries': 0},
             system={'is_production': Config._is_production(), 'version': '2.0.0', 'framework': 'fastapi', 'async': True}
         )
+
+
+@router.get("/api/performance-stats")
+async def api_performance_stats(
+    db: AsyncSession = Depends(get_async_db),
+    _admin = Depends(validate_admin_key)
+):
+    """
+    Get detailed performance statistics (Admin only).
+
+    Analyzes recent conversations to identify bottlenecks.
+    Returns performance metrics including avg, median, p95 times.
+    """
+    try:
+        # Get last 100 conversations with response times
+        result = await db.execute(
+            select(Conversation)
+            .where(Conversation.response_time.isnot(None))
+            .order_by(Conversation.created_at.desc())
+            .limit(100)
+        )
+        conversations = result.scalars().all()
+
+        if not conversations:
+            return {
+                "message": "No conversations found",
+                "stats": None
+            }
+
+        # Calculate response time statistics
+        response_times = [c.response_time for c in conversations]
+        response_times.sort()
+
+        n = len(response_times)
+        stats = {
+            "recent_queries": n,
+            "avg_response_time": round(sum(response_times) / n, 3),
+            "median_response_time": round(response_times[n//2], 3),
+            "min_response_time": round(min(response_times), 3),
+            "max_response_time": round(max(response_times), 3),
+            "p95_response_time": round(response_times[int(n*0.95)], 3) if n > 1 else 0,
+            "p99_response_time": round(response_times[int(n*0.99)], 3) if n > 1 else 0
+        }
+
+        # Identify slow queries (> 5s)
+        slow_queries = [
+            {
+                "query": c.user_query[:100] + "..." if len(c.user_query) > 100 else c.user_query,
+                "response_time": round(c.response_time, 3),
+                "created_at": c.created_at.isoformat(),
+                "cached": "cached" in c.ai_response.lower() if c.ai_response else False
+            }
+            for c in conversations if c.response_time and c.response_time > 5.0
+        ]
+
+        # Performance health assessment
+        avg_time = stats["avg_response_time"]
+        if avg_time <= 3.0:
+            health_status = "EXCELLENT"
+            health_color = "green"
+            recommendation = "System is performing optimally!"
+        elif avg_time <= 5.0:
+            health_status = "GOOD"
+            health_color = "blue"
+            recommendation = "System is performing well."
+        elif avg_time <= 8.0:
+            health_status = "ACCEPTABLE"
+            health_color = "yellow"
+            recommendation = "Consider further optimization."
+        else:
+            health_status = "NEEDS_IMPROVEMENT"
+            health_color = "red"
+            recommendation = "Significant optimization required."
+
+        return {
+            "stats": stats,
+            "health": {
+                "status": health_status,
+                "color": health_color,
+                "recommendation": recommendation
+            },
+            "slow_queries": slow_queries[:10],  # Top 10 slowest
+            "analysis": {
+                "cache_recommended": len(slow_queries) > 10,
+                "optimization_needed": avg_time > 5.0
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting performance stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/api/initialize", response_model=InitializeResponse)
