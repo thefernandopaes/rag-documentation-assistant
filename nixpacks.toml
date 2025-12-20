@@ -1,0 +1,20 @@
+# Railway Nixpacks Configuration
+# https://nixpacks.com/docs/configuration/file
+
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = [
+    "pip install --upgrade pip",
+    "pip install uv",
+    "uv pip install --system -r requirements.txt || pip install -r pyproject.toml"
+]
+
+[start]
+# Use Uvicorn for FastAPI (NOT Gunicorn)
+cmd = "uvicorn fastapi_app:app --host 0.0.0.0 --port $PORT --workers ${WEB_CONCURRENCY:-4} --timeout-keep-alive 5 --proxy-headers --forwarded-allow-ips '*' --limit-concurrency 1000"
+
+[variables]
+# Ensure Python doesn't buffer output (better logging)
+PYTHONUNBUFFERED = "1"
