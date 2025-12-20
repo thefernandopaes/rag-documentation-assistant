@@ -35,9 +35,20 @@ class AsyncRAGEngine:
         """Initialize the async RAG engine"""
         Config.validate_config()
 
-        # Initialize AsyncOpenAI client (NON-BLOCKING)
-        self.openai_client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
-        logger.info("AsyncOpenAI client initialized")
+        # Initialize AI client (OpenRouter or OpenAI)
+        if Config.USE_OPENROUTER:
+            # Use OpenRouter (free models available)
+            self.openai_client = AsyncOpenAI(
+                api_key=Config.OPENROUTER_API_KEY,
+                base_url=Config.OPENROUTER_BASE_URL
+            )
+            self.model_name = Config.OPENROUTER_MODEL
+            logger.info(f"OpenRouter client initialized with model: {self.model_name}")
+        else:
+            # Use OpenAI (paid)
+            self.openai_client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
+            self.model_name = Config.OPENAI_MODEL
+            logger.info(f"OpenAI client initialized with model: {self.model_name}")
 
         # Initialize ChromaDB (sync, will wrap calls in to_thread)
         self.chroma_client = chromadb.PersistentClient(
@@ -431,9 +442,9 @@ class AsyncRAGEngine:
 
             user_prompt = self._build_user_prompt(query, context, history, is_api_query)
 
-            # AsyncOpenAI call (NON-BLOCKING)
+            # AsyncOpenAI call (NON-BLOCKING) - works with OpenRouter or OpenAI
             response = await self.openai_client.chat.completions.create(
-                model=Config.OPENAI_MODEL,
+                model=self.model_name,  # Uses configured model (OpenRouter or OpenAI)
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}

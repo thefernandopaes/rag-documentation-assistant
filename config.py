@@ -4,9 +4,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # OpenAI Configuration
+    # AI Provider Configuration
+    # OpenRouter (Free models available - recommended)
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
+    OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+    # OpenAI (Fallback - paid)
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL = "gpt-4o"  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+
+    # Use OpenRouter by default if available
+    USE_OPENROUTER = (os.getenv("USE_OPENROUTER", "true").lower() == "true")
+
     # Session secret (must be set in production)
     SESSION_SECRET = os.getenv("SESSION_SECRET")
     # Admin API key to protect administrative endpoints in production
@@ -121,8 +131,17 @@ class Config:
     @classmethod
     def validate_config(cls):
         """Validate required configuration"""
-        if not cls.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY environment variable is required")
+        # Require at least one AI provider API key
+        if cls.USE_OPENROUTER:
+            if not cls.OPENROUTER_API_KEY:
+                raise ValueError(
+                    "OPENROUTER_API_KEY environment variable is required when USE_OPENROUTER=true"
+                )
+        else:
+            if not cls.OPENAI_API_KEY:
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is required when USE_OPENROUTER=false"
+                )
 
         # Enforce SESSION_SECRET in production environments
         if cls._is_production() and not cls.SESSION_SECRET:
