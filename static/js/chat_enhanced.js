@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function setupEventListeners() {
     const sendBtn = document.getElementById('send-btn');
-    const userInput = document.getElementById('user-input');
+    const userInput = document.getElementById('chat-input');
     const clearBtn = document.getElementById('clear-chat');
 
     if (sendBtn) {
@@ -78,7 +78,7 @@ function setupKeyboardShortcuts() {
         // Ctrl+/ to focus input
         if (e.ctrlKey && e.key === '/') {
             e.preventDefault();
-            const input = document.getElementById('user-input');
+            const input = document.getElementById('chat-input');
             if (input) input.focus();
         }
     });
@@ -88,7 +88,7 @@ function setupKeyboardShortcuts() {
  * Send message to API
  */
 async function sendMessage() {
-    const userInput = document.getElementById('user-input');
+    const userInput = document.getElementById('chat-input');
     const query = userInput.value.trim();
 
     if (!query) {
@@ -596,7 +596,7 @@ function displayError(message) {
  */
 function retryLastMessage() {
     if (lastQuery) {
-        document.getElementById('user-input').value = lastQuery;
+        document.getElementById('chat-input').value = lastQuery;
         sendMessage();
     }
 }
@@ -628,7 +628,7 @@ function clearChat() {
  * Ask related question
  */
 function askRelated(question) {
-    document.getElementById('user-input').value = question;
+    document.getElementById('chat-input').value = question;
     sendMessage();
 }
 
