@@ -172,6 +172,22 @@ def create_fastapi_app() -> FastAPI:
             ]
         }
 
+    # Health check endpoint (available immediately)
+    @app.get("/health", tags=["Health"])
+    async def health_check() -> Dict[str, Any]:
+        """
+        Health check endpoint for monitoring.
+
+        Returns:
+            Status information
+        """
+        return {
+            "status": "healthy",
+            "version": "2.0.0",
+            "framework": "fastapi",
+            "async": True
+        }
+
     logger.info("FastAPI application created successfully")
 
     return app
@@ -277,27 +293,6 @@ def _register_exception_handlers(app: FastAPI) -> None:
         )
 
     logger.info("Exception handlers registered")
-
-
-# Create application instance
-app = create_fastapi_app()
-
-
-# Health check endpoint (available immediately)
-@app.get("/health", tags=["Health"])
-async def health_check() -> Dict[str, Any]:
-    """
-    Health check endpoint for monitoring.
-
-    Returns:
-        Status information
-    """
-    return {
-        "status": "healthy",
-        "version": "2.0.0",
-        "framework": "fastapi",
-        "async": True
-    }
 
 
 # Create app instance at module level for uvicorn
