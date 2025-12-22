@@ -35,22 +35,37 @@ class AsyncRAGEngine:
         """Initialize the async RAG engine"""
         Config.validate_config()
 
-        # Initialize AI client (OpenRouter or OpenAI)
+        # Initialize AI clients (hybrid approach supported)
         if Config.USE_OPENROUTER:
-            # Use OpenRouter (free models available)
-            self.openai_client = AsyncOpenAI(
+            # Use OpenRouter for chat (free models available)
+            self.chat_client = AsyncOpenAI(
                 api_key=Config.OPENROUTER_API_KEY,
                 base_url=Config.OPENROUTER_BASE_URL
             )
             self.model_name = Config.OPENROUTER_MODEL
-            self.embedding_model = Config.OPENROUTER_EMBEDDING_MODEL
-            logger.info(f"OpenRouter client initialized with chat model: {self.model_name}, embedding model: {self.embedding_model}")
+            logger.info(f"OpenRouter client initialized for chat with model: {self.model_name}")
         else:
-            # Use OpenAI (paid)
-            self.openai_client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
+            # Use OpenAI for chat (paid)
+            self.chat_client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
             self.model_name = Config.OPENAI_MODEL
+            logger.info(f"OpenAI client initialized for chat with model: {self.model_name}")
+
+        # Initialize embedding client (can be different from chat client)
+        if Config.USE_OPENAI_EMBEDDINGS:
+            # Use OpenAI for embeddings (recommended - more reliable)
+            self.embedding_client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
             self.embedding_model = Config.OPENAI_EMBEDDING_MODEL
-            logger.info(f"OpenAI client initialized with chat model: {self.model_name}, embedding model: {self.embedding_model}")
+            logger.info(f"OpenAI client initialized for embeddings with model: {self.embedding_model}")
+        else:
+            # Use OpenRouter for embeddings (cheaper but may have issues)
+            if Config.USE_OPENROUTER:
+                self.embedding_client = self.chat_client  # Reuse OpenRouter client
+                self.embedding_model = Config.OPENROUTER_EMBEDDING_MODEL
+                logger.info(f"OpenRouter client initialized for embeddings with model: {self.embedding_model}")
+            else:
+                self.embedding_client = self.chat_client  # Reuse OpenAI client
+                self.embedding_model = Config.OPENAI_EMBEDDING_MODEL
+                logger.info(f"OpenAI client initialized for embeddings with model: {self.embedding_model}")
 
         # Initialize ChromaDB (sync, will wrap calls in to_thread)
         self.chroma_client = chromadb.PersistentClient(
@@ -168,13 +183,13 @@ class AsyncRAGEngine:
 
     async def _get_embedding(self, text: str) -> List[float]:
         """
-        Generate embedding using AsyncOpenAI with performance tracking.
+        Generate embedding using embedding client with performance tracking.
 
         Performance: 500ms-2s per call (async allows concurrent processing)
         """
         embed_start = time.time()
         try:
-            response = await self.openai_client.embeddings.create(
+            response = await self.embedding_client.embeddings.create(
                 model=self.embedding_model,
                 input=text.replace("\n", " ")
             )
@@ -444,9 +459,9 @@ class AsyncRAGEngine:
 
             user_prompt = self._build_user_prompt(query, context, history, is_api_query)
 
-            # AsyncOpenAI call (NON-BLOCKING) - works with OpenRouter or OpenAI
-            response = await self.openai_client.chat.completions.create(
-                model=self.model_name,  # Uses configured model (OpenRouter or OpenAI)
+            # AsyncOpenAI call (NON-BLOCKING) - uses chat client (OpenRouter or OpenAI)
+            response = await self.chat_client.chat.completions.create(
+                model=self.model_name,  # Uses configured chat model (OpenRouter or OpenAI)
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}

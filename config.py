@@ -5,7 +5,7 @@ load_dotenv()
 
 class Config:
     # AI Provider Configuration
-    # OpenRouter (Free models available - recommended)
+    # OpenRouter (Free models available - recommended for chat)
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
     OPENROUTER_EMBEDDING_MODEL = os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small")
@@ -16,8 +16,10 @@ class Config:
     OPENAI_MODEL = "gpt-4o"  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
     OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 
-    # Use OpenRouter by default if available
+    # Provider selection
     USE_OPENROUTER = (os.getenv("USE_OPENROUTER", "true").lower() == "true")
+    # Use OpenAI for embeddings even when using OpenRouter for chat (recommended - more reliable)
+    USE_OPENAI_EMBEDDINGS = (os.getenv("USE_OPENAI_EMBEDDINGS", "true").lower() == "true")
 
     # Session secret (must be set in production)
     SESSION_SECRET = os.getenv("SESSION_SECRET")
@@ -133,16 +135,17 @@ class Config:
     @classmethod
     def validate_config(cls):
         """Validate required configuration"""
-        # Require at least one AI provider API key
-        if cls.USE_OPENROUTER:
-            if not cls.OPENROUTER_API_KEY:
-                raise ValueError(
-                    "OPENROUTER_API_KEY environment variable is required when USE_OPENROUTER=true"
-                )
-        else:
+        # Validate API keys based on provider configuration
+        if cls.USE_OPENROUTER and not cls.OPENROUTER_API_KEY:
+            raise ValueError(
+                "OPENROUTER_API_KEY environment variable is required when USE_OPENROUTER=true"
+            )
+
+        # If using OpenAI for embeddings OR using OpenAI for everything, require OpenAI key
+        if cls.USE_OPENAI_EMBEDDINGS or not cls.USE_OPENROUTER:
             if not cls.OPENAI_API_KEY:
                 raise ValueError(
-                    "OPENAI_API_KEY environment variable is required when USE_OPENROUTER=false"
+                    "OPENAI_API_KEY environment variable is required when USE_OPENAI_EMBEDDINGS=true or USE_OPENROUTER=false"
                 )
 
         # Enforce SESSION_SECRET in production environments
