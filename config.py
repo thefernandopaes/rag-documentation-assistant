@@ -8,11 +8,13 @@ class Config:
     # OpenRouter (Free models available - recommended)
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
     OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
+    OPENROUTER_EMBEDDING_MODEL = os.getenv("OPENROUTER_EMBEDDING_MODEL", "openai/text-embedding-3-small")
     OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
     # OpenAI (Fallback - paid)
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL = "gpt-4o"  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+    OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 
     # Use OpenRouter by default if available
     USE_OPENROUTER = (os.getenv("USE_OPENROUTER", "true").lower() == "true")

@@ -43,12 +43,14 @@ class AsyncRAGEngine:
                 base_url=Config.OPENROUTER_BASE_URL
             )
             self.model_name = Config.OPENROUTER_MODEL
-            logger.info(f"OpenRouter client initialized with model: {self.model_name}")
+            self.embedding_model = Config.OPENROUTER_EMBEDDING_MODEL
+            logger.info(f"OpenRouter client initialized with chat model: {self.model_name}, embedding model: {self.embedding_model}")
         else:
             # Use OpenAI (paid)
             self.openai_client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
             self.model_name = Config.OPENAI_MODEL
-            logger.info(f"OpenAI client initialized with model: {self.model_name}")
+            self.embedding_model = Config.OPENAI_EMBEDDING_MODEL
+            logger.info(f"OpenAI client initialized with chat model: {self.model_name}, embedding model: {self.embedding_model}")
 
         # Initialize ChromaDB (sync, will wrap calls in to_thread)
         self.chroma_client = chromadb.PersistentClient(
@@ -173,19 +175,19 @@ class AsyncRAGEngine:
         embed_start = time.time()
         try:
             response = await self.openai_client.embeddings.create(
-                model="text-embedding-3-small",
+                model=self.embedding_model,
                 input=text.replace("\n", " ")
             )
             embedding = response.data[0].embedding
 
             # Track embedding time for performance metrics
             self._last_embedding_time = time.time() - embed_start
-            logger.debug(f"Embedding generated in {self._last_embedding_time:.3f}s")
+            logger.debug(f"Embedding generated in {self._last_embedding_time:.3f}s using model {self.embedding_model}")
 
             return embedding
 
         except Exception as e:
-            logger.error(f"Error generating embedding: {e}")
+            logger.error(f"Error generating embedding with model {self.embedding_model}: {e}")
             raise
 
     async def search_documents(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
