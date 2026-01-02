@@ -9,7 +9,6 @@ Main application factory with:
 - Templates and static files serving
 """
 
-import logging
 from contextlib import asynccontextmanager
 from typing import Dict, Any
 from pathlib import Path
@@ -24,13 +23,10 @@ from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config import Config
+from app.core.logging_utils import logger, configure_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Re-configure logging on module import to ensure consistent state
+configure_logging()
 
 
 @asynccontextmanager
@@ -59,9 +55,11 @@ async def lifespan(app: FastAPI):
         app.state.rag_engine = AsyncRAGEngine()
         logger.info("Async RAG engine initialized")
 
-        # Initialize database (async version in Phase 2)
-        # TODO Phase 2: Initialize async database connection pool
-        logger.info("Database connections ready")
+        # Initialize database pool
+        from app.db.database import get_db_engine
+        # Ensure engine is created
+        _ = get_db_engine() 
+        logger.info("Database initialized")
 
         yield
 
@@ -305,6 +303,6 @@ if __name__ == "__main__":
         "fastapi_app:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        reload=not Config._is_production(), 
         log_level="info"
     )
