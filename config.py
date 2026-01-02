@@ -17,9 +17,19 @@ class Config:
     OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 
     # Provider selection
-    USE_OPENROUTER = (os.getenv("USE_OPENROUTER", "true").lower() == "true")
-    # Use OpenAI for embeddings even when using OpenRouter for chat (recommended - more reliable)
-    USE_OPENAI_EMBEDDINGS = (os.getenv("USE_OPENAI_EMBEDDINGS", "true").lower() == "true")
+    USE_OPENROUTER = (os.getenv("USE_OPENROUTER", "false").lower() == "true")
+    
+    # Gemini Configuration
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash") # gemini-1.5-flash or gemini-1.5-pro
+    GEMINI_EMBEDDING_MODEL = "models/text-embedding-004"
+    
+    # AI Provider Selection
+    # Options: "openai", "openrouter", "gemini"
+    AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
+    
+    # Use OpenAI for embeddings even when using OpenRouter/Gemini for chat (optional but recommended for better retrieval)
+    USE_OPENAI_EMBEDDINGS = (os.getenv("USE_OPENAI_EMBEDDINGS", "false").lower() == "true")
 
     # Session secret (must be set in production)
     SESSION_SECRET = os.getenv("SESSION_SECRET")
@@ -140,6 +150,13 @@ class Config:
             raise ValueError(
                 "OPENROUTER_API_KEY environment variable is required when USE_OPENROUTER=true"
             )
+
+        # Validate Gemini configuration
+        if cls.AI_PROVIDER == "gemini":
+            if not cls.GEMINI_API_KEY:
+                raise ValueError(
+                    "GEMINI_API_KEY environment variable is required when AI_PROVIDER=gemini"
+                )
 
         # If using OpenAI for embeddings OR using OpenAI for everything, require OpenAI key
         if cls.USE_OPENAI_EMBEDDINGS or not cls.USE_OPENROUTER:
