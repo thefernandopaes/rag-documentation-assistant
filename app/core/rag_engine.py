@@ -432,3 +432,20 @@ Response format (JSON) - BE CONCISE:
         # In a full implementation, this calls self.code_generator
         return result
 
+    async def get_collection_stats(self) -> Dict[str, Any]:
+        """Get statistics about the vector collection"""
+        try:
+            count = await asyncio.to_thread(self.collection.count)
+            return {
+                "count": count,
+                "provider": self.provider,
+                "embedding_model": self.embedding_model,
+                "embedding_provider": self.embedding_provider
+            }
+        except Exception as e:
+            logger.error(f"Error getting collection stats: {e}")
+            return {
+                "count": 0,
+                "error": str(e)
+            }
+
