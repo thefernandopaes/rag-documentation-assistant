@@ -58,18 +58,22 @@ class AsyncRAGEngine:
 
 
         # --- Embedding Client Initialization ---
-        if Config.USE_OPENAI_EMBEDDINGS:
+        # --- Embedding Client Initialization ---
+        # Logic: If Gemini is the main provider, use it for embeddings (unless explicit override)
+        # We prioritize Gemini here to solve the "USE_OPENAI_EMBEDDINGS=true" legacy causing 429 errors
+        
+        if self.provider == "gemini":
+            # Use Gemini for embeddings
+            self.embedding_model = Config.GEMINI_EMBEDDING_MODEL
+            self.embedding_provider = "gemini"
+            logger.info(f"Gemini configured for embeddings: {self.embedding_model}")
+            
+        elif Config.USE_OPENAI_EMBEDDINGS:
             # Use OpenAI for embeddings (Standard)
             self.embedding_client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
             self.embedding_model = Config.OPENAI_EMBEDDING_MODEL
             self.embedding_provider = "openai"
             logger.info(f"OpenAI client initialized for embeddings: {self.embedding_model}")
-            
-        elif self.provider == "gemini":
-            # Use Gemini for embeddings
-            self.embedding_model = Config.GEMINI_EMBEDDING_MODEL
-            self.embedding_provider = "gemini"
-            logger.info(f"Gemini configured for embeddings: {self.embedding_model}")
             
         else:
             # OpenRouter (if not OpenAI embeddings)
