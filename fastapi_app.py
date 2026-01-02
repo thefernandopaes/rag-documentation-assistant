@@ -55,10 +55,9 @@ async def lifespan(app: FastAPI):
         app.state.rag_engine = AsyncRAGEngine()
         logger.info("Async RAG engine initialized")
 
-        # Initialize database pool
-        from app.db.database import get_db_engine
-        # Ensure engine is created
-        _ = get_db_engine() 
+        # Initialize database (ensure tables exist)
+        from app.db.database import init_async_db
+        await init_async_db()
         logger.info("Database initialized")
 
         yield
@@ -72,7 +71,8 @@ async def lifespan(app: FastAPI):
         logger.info("Shutting down FastAPI application...")
 
         # Close database connections
-        # TODO Phase 2: await app.state.db_engine.dispose()
+        from app.db.database import dispose_async_db
+        await dispose_async_db()
 
         logger.info("Cleanup completed")
 
