@@ -18,7 +18,8 @@ from typing import List, Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings
 from openai import AsyncOpenAI
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import Config
 from app.core.cache import AsyncInMemoryCache
@@ -38,9 +39,8 @@ class AsyncRAGEngine:
 
         # --- Chat Client Initialization ---
         if self.provider == "gemini":
-            genai.configure(api_key=Config.GEMINI_API_KEY)
+            self.gemini_client = genai.Client(api_key=Config.GEMINI_API_KEY)
             self.chat_model_name = Config.GEMINI_MODEL
-            # Gemini client is stateless, configured globally
             logger.info(f"Gemini client initialized with model: {self.chat_model_name}")
             
         elif Config.USE_OPENROUTER:
@@ -105,14 +105,18 @@ class AsyncRAGEngine:
         start_time = time.time()
         try:
             if self.embedding_provider == "gemini":
-                # Gemini Embedding
+                # Gemini Embedding (Using new SDK)
                 result = await asyncio.to_thread(
-                    genai.embed_content,
+                    self.gemini_client.models.embed_content,
                     model=self.embedding_model,
-                    content=text,
-                    task_type="retrieval_document"
+                    contents=text,
+                    config=types.EmbedContentConfig(
+                        task_type="RETRIEVAL_DOCUMENT"
+                    )
                 )
-                embedding = result['embedding']
+                # Ensure we handle the response correctly (newer SDK usually returns an object with 'embeddings')
+                # For single content, it might return a single embedding object or list
+                embedding = result.embeddings[0].values
             
             else:
                 # OpenAI / OpenRouter Embedding
@@ -151,17 +155,18 @@ class AsyncRAGEngine:
             raise
 
     async def _generate_gemini_response(self, system_prompt: str, user_prompt: str, is_api_query: bool, context: str) -> Dict[str, Any]:
-        """Generate response using Gemini API"""
+        """Generate response using Gemini API v2 (google-genai)"""
         try:
-            model = genai.GenerativeModel(self.chat_model_name)
-            
             # Gemini generic prompt structure
+            # We use the new client initialized in __init__
+            
             full_prompt = f"{system_prompt}\n\n{user_prompt}\n\nPlease output valid JSON."
             
             response = await asyncio.to_thread(
-                model.generate_content,
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
+                self.gemini_client.models.generate_content,
+                model=self.chat_model_name,
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
                     temperature=Config.TEMPERATURE,
                     response_mime_type="application/json"
                 )
@@ -176,7 +181,7 @@ class AsyncRAGEngine:
             return result
             
         except Exception as e:
-            logger.error(f"Gemini generation error: {e}")
+            logger.error(f"Gemini generation error: {str(e)}")
             raise
 
     async def _generate_openai_response(self, system_prompt: str, user_prompt: str, is_api_query: bool, context: str) -> Dict[str, Any]:
