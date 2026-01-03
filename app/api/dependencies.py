@@ -20,7 +20,7 @@ from sqlalchemy import select, func
 from app.db.database import get_async_db
 from app.db.models import RateLimit
 from config import Config
-from utils.validators import validate_query, ValidationError
+from app.utils.validators import validate_query, ValidationError
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 Pydantic Schemas for FastAPI Request/Response Validation
 
 Includes custom validators for security (XSS, SQL injection, special chars)
-migrated from utils/validators.py
+migrated from app/utils/validators.py
 """
 
 import re
