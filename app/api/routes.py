@@ -445,8 +445,8 @@ async def api_initialize(
         import asyncio
         processor = DocumentProcessor()
 
-        # Run in thread pool to avoid blocking
-        documents = await asyncio.to_thread(processor.process_documentation_sources)
+        # Run async processor directly
+        documents = await processor.process_documentation_sources()
 
         if not documents:
             raise HTTPException(
